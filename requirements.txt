@@ -1,0 +1,2 @@
+stmpy
+paho-mqtt
