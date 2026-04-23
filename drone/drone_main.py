@@ -3,7 +3,6 @@ import logging
 import os
 import sys
 import threading
-from typing import Optional
 
 import paho.mqtt.client as mqtt
 import requests
@@ -57,8 +56,8 @@ class Drone:
         self.flight, flight_machine = build_flight(
             drone_id=drone_id, delivery_timeout_ms=DELIVERY_TIMEOUT_MS, nav=self.nav,
             publish_status=self._publish_status,
-            publish_display=self._publish_display,
-            publish_event=self._publish_event,
+            publish_display=lambda m: self._publish("display", {"display": m}),
+            publish_event=lambda k: self._publish("event", {"kind": k}),
         )
         self.battery, battery_machine = build_battery(
             drone_id=drone_id, tick_ms=BATTERY_TICK_MS, publish=self._publish_battery,
@@ -73,9 +72,6 @@ class Drone:
         self._publish("status", {"status": status})
         self.display.set_drone_status(self.drone_id, status)
 
-    def _publish_display(self, message: str) -> None:
-        self._publish("display", {"display": message})
-
     def _publish_telemetry(self, x: int, y: int, heading: int) -> None:
         self._publish("telemetry", {"x": x, "y": y, "heading": heading})
         self.display.set_position(x, y, drone_id=self.drone_id)
@@ -89,9 +85,6 @@ class Drone:
         if state == "empty":
             self._handle_battery_empty()
 
-    def _publish_event(self, kind: str, extra: Optional[dict] = None) -> None:
-        self._publish("event", {"kind": kind, **(extra or {})})
-
     def _handle_battery_empty(self) -> None:
         flight_state = self.flight.stm.state if self.flight and self.flight.stm else None
         if flight_state not in _IN_FLIGHT_FLIGHT_STATES:
@@ -103,7 +96,7 @@ class Drone:
         except Exception:
             log.exception("nav.abort() failed")
         self._publish_status("emergency_landed_empty")
-        self._publish_display("emergency: battery empty")
+        self._publish("display", {"display": "emergency: battery empty"})
         self.display.clear_path()
 
     def _on_focus_change(self, drone_id: str) -> None:
@@ -167,21 +160,17 @@ class Drone:
             return
         command = payload.get("command", "")
         log.info("[%s] ← %s: %s", self.drone_id, command, payload)
-        if command == "new_order":
-            self.driver.send("new_order", "flight_control")
-        elif command == "medicine_loaded":
+        flight_cmds = {"new_order", "cancel", "delivery_completed"}
+        battery_cmds = {"charge", "stop_charge"}
+        if command == "medicine_loaded":
             route = payload.get("route", [])
             self.display.set_path(route, drone_id=self.drone_id)
             self.driver.send("medicine_loaded", "flight_control",
                              args=[payload.get("destination", []), route])
-        elif command == "cancel":
-            self.driver.send("cancel", "flight_control")
-        elif command == "delivery_completed":
-            self.driver.send("delivery_completed", "flight_control")
-        elif command == "charge":
-            self.driver.send("charge", "battery")
-        elif command == "stop_charge":
-            self.driver.send("stop_charge", "battery")
+        elif command in flight_cmds:
+            self.driver.send(command, "flight_control")
+        elif command in battery_cmds:
+            self.driver.send(command, "battery")
         else:
             log.warning("[%s] unknown command %r", self.drone_id, command)
 

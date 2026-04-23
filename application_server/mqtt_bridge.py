@@ -32,9 +32,6 @@ class MQTTBridge:
         except Exception:
             pass
 
-    def wait_ready(self, timeout: float = 5.0) -> bool:
-        return self._ready.wait(timeout)
-
     def send_command(self, drone_id: str, command: str, **kwargs) -> None:
         payload = {"command": command, **kwargs}
         self.client.publish(drone_topic(drone_id, "command"), json.dumps(payload), qos=1)

@@ -69,13 +69,6 @@ def header_bar(parent, title_text, subtitle_var=None, right_var=None):
     return bar
 
 
-def card(parent, **pack_kwargs):
-    frame = tk.Frame(parent, bg=BG_PANEL, highlightthickness=1, highlightbackground=BORDER)
-    defaults = {"fill": "x", "padx": 16, "pady": 8, **pack_kwargs}
-    frame.pack(**defaults)
-    return frame
-
-
 def _btn(parent, text, command, bg, fg, width=None):
     btn = tk.Button(parent, text=text, command=command, bg=bg, fg=fg,
                     activebackground=bg, activeforeground=fg,

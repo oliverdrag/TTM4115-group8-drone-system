@@ -85,13 +85,6 @@ class Database:
             row = self._conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
         return dict(row) if row else None
 
-    def list_active_orders(self) -> list[dict]:
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM orders WHERE status NOT IN ('completed','cancelled','failed') ORDER BY id"
-            ).fetchall()
-        return [dict(r) for r in rows]
-
     def create_mission(self, order_id: int, drone_id: str, route_out: list[tuple[int, int]]) -> int:
         now = datetime.utcnow().isoformat()
         return int(self._exec(
@@ -107,15 +100,6 @@ class Database:
             fields["route_home"] = json.dumps(fields["route_home"])
         cols = ", ".join(f"{k}=?" for k in fields)
         self._exec(f"UPDATE missions SET {cols} WHERE id=?", list(fields.values()) + [mission_id])
-
-    def get_active_mission_for_drone(self, drone_id: str) -> Optional[dict]:
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT * FROM missions WHERE drone_id=? AND status NOT IN ('completed','cancelled','failed') "
-                "ORDER BY id DESC LIMIT 1",
-                (drone_id,),
-            ).fetchone()
-        return dict(row) if row else None
 
     def save_grid_snapshot(self, width: int, height: int, zones_json: str) -> None:
         self._exec(

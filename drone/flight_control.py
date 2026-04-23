@@ -12,7 +12,7 @@ class FlightControl:
     def __init__(self, drone_id: str, delivery_timeout_ms: int, nav: NavigationModule,
                  publish_status: Callable[[str], None],
                  publish_display: Callable[[str], None],
-                 publish_event: Callable[[str, dict], None]):
+                 publish_event: Callable[[str], None]):
         self.drone_id = drone_id
         self.delivery_timeout_ms = delivery_timeout_ms
         self.nav = nav
@@ -20,8 +20,6 @@ class FlightControl:
         self.publish_display = publish_display
         self.publish_event = publish_event
         self.stm: Optional[Machine] = None
-        self.current_route: list[tuple[int, int]] = []
-        self.current_destination: Optional[tuple[int, int]] = None
 
     def open_storage(self): log.info("[%s] storage hatch: OPEN", self.drone_id)
     def close_storage(self): log.info("[%s] storage hatch: CLOSED", self.drone_id)
@@ -40,10 +38,8 @@ class FlightControl:
         self.publish_display("docking")
 
     def effect_medicine_loaded(self, destination, route):
-        self.current_destination = (int(destination[0]), int(destination[1]))
-        self.current_route = [(int(x), int(y)) for x, y in route]
         self.close_storage()
-        self.nav.fly_to_client(self.current_route)
+        self.nav.fly_to_client([(int(x), int(y)) for x, y in route])
         self.publish_status("flight started")
         self.publish_display("flight started")
 
@@ -57,7 +53,7 @@ class FlightControl:
         self.publish_status("arrived, unloading medicine")
         self.publish_display("pick up medicine")
         self.open_storage()
-        self.publish_event("arrived_at_client", {})
+        self.publish_event("arrived_at_client")
 
     def effect_delivery_completed(self):
         self.close_storage()
@@ -76,7 +72,7 @@ class FlightControl:
         self.publish_status("returned")
         self.open_storage()
         self.publish_display("returned, check for remaining medicine")
-        self.publish_event("returned_home", {})
+        self.publish_event("returned_home")
 
     def effect_cancel_deliver(self):
         self.effect_delivery_timeout()
@@ -85,7 +81,7 @@ class FlightControl:
 def build_machine(drone_id: str, delivery_timeout_ms: int, nav: NavigationModule,
                   publish_status: Callable[[str], None],
                   publish_display: Callable[[str], None],
-                  publish_event: Callable[[str, dict], None]) -> tuple[FlightControl, Machine]:
+                  publish_event: Callable[[str], None]) -> tuple[FlightControl, Machine]:
     handlers = FlightControl(drone_id, delivery_timeout_ms, nav,
                              publish_status, publish_display, publish_event)
     transitions = [

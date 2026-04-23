@@ -91,8 +91,7 @@ class UserFrontend:
         self.root.protocol("WM_DELETE_WINDOW", self.on_button_exit)
 
     def build_header(self):
-        self.subtitle_var = tk.StringVar(value="")
-        theme.header_bar(self.root, "Drone Delivery", subtitle_var=self.subtitle_var)
+        theme.header_bar(self.root, "Drone Delivery")
         strip = tk.Frame(self.root, bg=theme.BG_SUBTLE)
         strip.pack(fill="x")
         self.status_text = tk.StringVar(value="Idle")
@@ -101,18 +100,19 @@ class UserFrontend:
         tk.Label(strip, textvariable=self.coord_text, bg=theme.BG_SUBTLE,
                  fg=theme.FG_MUTED, font=theme.FONT_MONO).pack(side="right", padx=18)
 
-    def _image_panel(self, parent, image):
-        panel = tk.Frame(parent, bg=theme.BG_PANEL)
+    def _card(self, parent):
+        c = tk.Frame(parent, bg=theme.BG_PANEL, highlightthickness=1, highlightbackground=theme.BORDER)
+        c.pack(fill="both", expand=True)
+        return c
+
+    def _add_image(self, parent, image):
         if image is not None:
-            tk.Label(panel, image=image, bg=theme.BG_PANEL).pack(pady=(18, 10))
-        return panel
+            tk.Label(parent, image=image, bg=theme.BG_PANEL).pack(pady=(18, 10))
 
     def build_start_view(self):
         self.start_frame.configure(bg=theme.BG)
-        card = tk.Frame(self.start_frame, bg=theme.BG_PANEL,
-                        highlightthickness=1, highlightbackground=theme.BORDER)
-        card.pack(fill="both", expand=True)
-        self._image_panel(card, self.idle_image).pack(fill="x")
+        card = self._card(self.start_frame)
+        self._add_image(card, self.idle_image)
         tk.Label(card, text="Need medicine delivered?", bg=theme.BG_PANEL,
                  fg=theme.FG, font=theme.FONT_HEADER).pack(pady=(4, 2))
         tk.Label(card, text="Request a drone and we'll dispatch the closest one.",
@@ -132,9 +132,7 @@ class UserFrontend:
 
     def build_enter_info_view(self):
         self.info_frame.configure(bg=theme.BG)
-        card = tk.Frame(self.info_frame, bg=theme.BG_PANEL,
-                        highlightthickness=1, highlightbackground=theme.BORDER)
-        card.pack(fill="both", expand=True)
+        card = self._card(self.info_frame)
         tk.Label(card, text="Delivery information", bg=theme.BG_PANEL,
                  fg=theme.FG, font=theme.FONT_HEADER).pack(anchor="w", padx=24, pady=(18, 4))
         self.entry_name = self._build_labeled_entry(card, "Name")
@@ -147,10 +145,8 @@ class UserFrontend:
 
     def build_delivery_view(self):
         self.delivery_frame.configure(bg=theme.BG)
-        card = tk.Frame(self.delivery_frame, bg=theme.BG_PANEL,
-                        highlightthickness=1, highlightbackground=theme.BORDER)
-        card.pack(fill="both", expand=True)
-        self._image_panel(card, self.delivering_image).pack(fill="x")
+        card = self._card(self.delivery_frame)
+        self._add_image(card, self.delivering_image)
         tk.Label(card, text="A drone is on the way", bg=theme.BG_PANEL,
                  fg=theme.FG, font=theme.FONT_HEADER).pack(pady=(4, 2))
         tk.Label(card, text="Tap 'Medicine Received' when it arrives.",

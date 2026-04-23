@@ -24,7 +24,6 @@ def viewer_topic() -> str:
     return f"{MQTT_TOPIC_ROOT}/viewer/status"
 
 
-METERS_PER_CELL = 100
 GRID_WIDTH = 80
 GRID_HEIGHT = 80
 

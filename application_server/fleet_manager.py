@@ -8,6 +8,7 @@ from .database import Database
 from .grid import Grid
 from .mqtt_bridge import MQTTBridge
 from .pathfinding import astar
+from .weather_client import fetch_weather
 
 log = logging.getLogger("fleet_manager")
 
@@ -90,6 +91,8 @@ class FleetManager:
     def submit_order(self, user_name: str, medicine: str, dest: tuple[int, int]) -> dict:
         if not self.grid.is_free(*dest):
             raise ValueError("Destination is inside a restricted zone")
+        if not self._is_flyable(dest):
+            raise ValueError("Weather unflyable at destination (wind or rain above limits)")
         order_id = self.db.create_order(user_name, medicine, dest)
         order = {
             "id": order_id, "user_name": user_name, "medicine": medicine,
@@ -169,6 +172,14 @@ class FleetManager:
         self.db.upsert_drone(drone)
         self._broadcast("drone_updated", dict(drone))
 
+    def _is_flyable(self, cell: tuple[int, int]) -> bool:
+        try:
+            w = fetch_weather(*cell)
+        except Exception as e:
+            log.warning("weather check failed for %s (%s) — treating as flyable", cell, e)
+            return True
+        return bool(w.get("flyable", True))
+
     def _pick_drone_for(self, dest: tuple[int, int]) -> Optional[tuple[dict, list[tuple[int, int]]]]:
         with self._lock:
             candidates = [d for d in self.drones.values()
@@ -177,6 +188,9 @@ class FleetManager:
             return None
         scored: list[tuple[int, dict, list[tuple[int, int]]]] = []
         for drone in candidates:
+            if not self._is_flyable((drone["x"], drone["y"])):
+                log.info("skipping %s: unflyable weather at home", drone["id"])
+                continue
             path = astar(self.grid, (drone["x"], drone["y"]), dest)
             if path is None:
                 continue

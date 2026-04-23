@@ -12,6 +12,7 @@ except Exception:
     SenseHat = None  # type: ignore[assignment]
 
 _DISABLED = os.environ.get("DISABLE_DISPLAY", "0") == "1"
+RESTRICTED_THRESHOLD = 0.25
 
 OFF = (0, 0, 0)
 RED = (180, 0, 0)
@@ -38,18 +39,15 @@ def drone_color(drone_id: str) -> tuple[int, int, int]:
 
 
 class GridDisplay:
-    def __init__(self, hat_size: int = 8, restricted_threshold: float = 0.25,
+    def __init__(self, hat_size: int = 8,
                  on_focus_change: Optional[Callable[[str], None]] = None):
         self.hat_size = hat_size
-        self.restricted_threshold = restricted_threshold
         self.on_focus_change = on_focus_change
         self.grid_width = 0
         self.grid_height = 0
         self.restricted: set[tuple[int, int]] = set()
         self.path: set[tuple[int, int]] = set()
-        self.path_drone_id: Optional[str] = None
         self.positions: dict[str, tuple[int, int]] = {}
-        self.statuses: dict[str, str] = {}
         self.known_drones: list[str] = []
         self.focus_drone: Optional[str] = None
         self.zoom_level = 0
@@ -81,16 +79,14 @@ class GridDisplay:
             }
         self.render()
 
-    def set_path(self, route, drone_id: Optional[str] = None) -> None:
+    def set_path(self, route, **_) -> None:
         with self._lock:
             self.path = {(int(p[0]), int(p[1])) for p in (route or [])}
-            self.path_drone_id = drone_id
         self.render()
 
     def clear_path(self) -> None:
         with self._lock:
             self.path = set()
-            self.path_drone_id = None
         self.render()
 
     def set_position(self, x: int, y: int, drone_id: Optional[str] = None) -> None:
@@ -101,17 +97,19 @@ class GridDisplay:
         self.render()
 
     def set_drone_status(self, drone_id: str, status: str) -> None:
-        cleared = False
         with self._lock:
-            self.statuses[drone_id] = status
             self._track_drone(drone_id)
             if drone_id == self.focus_drone and status in _DOCKED_STATUSES and self.path:
                 self.path = set()
-                self.path_drone_id = None
-                cleared = True
-        if cleared:
-            log.info("focus drone %s is %s — path cleared", drone_id, status)
+                log.info("focus drone %s is %s — path cleared", drone_id, status)
         self.render()
+
+    def _fire_focus_change(self, drone_id: str) -> None:
+        if self.on_focus_change:
+            try:
+                self.on_focus_change(drone_id)
+            except Exception:
+                log.exception("on_focus_change callback raised")
 
     def set_focus_drone(self, drone_id: str) -> None:
         changed = False
@@ -120,13 +118,9 @@ class GridDisplay:
             if self.focus_drone != drone_id:
                 self.focus_drone = drone_id
                 self.path = set()
-                self.path_drone_id = None
                 changed = True
-        if changed and self.on_focus_change:
-            try:
-                self.on_focus_change(drone_id)
-            except Exception:
-                log.exception("on_focus_change callback raised")
+        if changed:
+            self._fire_focus_change(drone_id)
         self.render()
 
     def cycle_focus(self, delta: int) -> Optional[str]:
@@ -139,12 +133,7 @@ class GridDisplay:
                 return new_focus
             self.focus_drone = new_focus
             self.path = set()
-            self.path_drone_id = None
-        if self.on_focus_change:
-            try:
-                self.on_focus_change(new_focus)
-            except Exception:
-                log.exception("on_focus_change callback raised")
+        self._fire_focus_change(new_focus)
         self.render()
         return new_focus
 
@@ -211,7 +200,7 @@ class GridDisplay:
                             restricted_count += 1
                         if (xx, yy) in self.path:
                             path_hit = True
-                if restricted_count / total > self.restricted_threshold:
+                if restricted_count / total > RESTRICTED_THRESHOLD:
                     leds[led_y][led_x] = RED
                 elif path_hit:
                     leds[led_y][led_x] = PATH_GREEN

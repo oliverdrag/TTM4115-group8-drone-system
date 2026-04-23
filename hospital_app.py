@@ -263,26 +263,24 @@ class DroneApp:
     def _on_medicine_loaded(self) -> None:
         if not self.selected:
             return
-        self._call_rest("POST", f"/api/drones/{self.selected['id']}/medicine_loaded")
+        self._post(f"/api/drones/{self.selected['id']}/medicine_loaded")
         self._log_event("command", drone=self.selected, command="medicine_loaded")
 
     def _on_return(self) -> None:
         if not self.selected:
             return
-        self._call_rest("POST", f"/api/drones/{self.selected['id']}/return")
+        self._post(f"/api/drones/{self.selected['id']}/return")
         self._log_event("command", drone=self.selected, command="return")
 
-    def _call_rest(self, method: str, path: str, body: Optional[dict] = None) -> None:
+    def _post(self, path: str) -> None:
         def go() -> None:
-            url = f"{APP_SERVER_URL}{path}"
             try:
-                r = requests.post(url, json=body or {}, timeout=5) if method == "POST" \
-                    else requests.get(url, timeout=5)
+                r = requests.post(f"{APP_SERVER_URL}{path}", json={}, timeout=5)
                 if not r.ok:
                     self.root.after(0, lambda: self._add_log(
-                        f"REST {method} {path} → {r.status_code} {r.text[:80]}"))
+                        f"POST {path} → {r.status_code} {r.text[:80]}"))
             except Exception as e:
-                self.root.after(0, lambda: self._add_log(f"REST {method} {path} failed: {e}"))
+                self.root.after(0, lambda: self._add_log(f"POST {path} failed: {e}"))
         threading.Thread(target=go, daemon=True).start()
 
     def _update_detail_panel(self) -> None:

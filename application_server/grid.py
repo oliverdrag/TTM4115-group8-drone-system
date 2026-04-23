@@ -1,7 +1,5 @@
-import json
 import random
 from collections import deque
-from typing import Iterable
 
 FREE = 0
 RESTRICTED = 1
@@ -29,12 +27,6 @@ class Grid:
 
     def is_free(self, x: int, y: int) -> bool:
         return self.in_bounds(x, y) and self.cells[y][x] == FREE
-
-    def restricted_cells(self) -> Iterable[tuple[int, int]]:
-        for y in range(self.height):
-            for x in range(self.width):
-                if self.cells[y][x] == RESTRICTED:
-                    yield (x, y)
 
     def to_dict(self) -> dict:
         return {"width": self.width, "height": self.height, "zones": self.zones}
@@ -105,12 +97,3 @@ def _grow_blob(width: int, height: int, seed: tuple[int, int], target: int,
         if grew:
             frontier.append((cx, cy))
     return list(blob)
-
-
-def zones_to_json(zones: list[dict]) -> str:
-    return json.dumps(zones)
-
-
-def zones_from_json(blob: str) -> list[dict]:
-    data = json.loads(blob)
-    return data if isinstance(data, list) else []

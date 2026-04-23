@@ -37,10 +37,6 @@ class NavigationModule:
             self._trail = [home]
         self.publish_telemetry(home[0], home[1], 0)
 
-    def position(self) -> tuple[int, int]:
-        with self._lock:
-            return self._position
-
     def fly_to_client(self, route: list[tuple[int, int]]) -> None:
         self._cancel_timer()
         with self._lock:
