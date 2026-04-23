@@ -80,6 +80,11 @@ class FleetManager:
                 "viewer": dict(self.viewer),
             }
 
+    def _set_order_status(self, order: dict, status: str, event: str) -> None:
+        self.db.update_order(order["id"], status=status)
+        order["status"] = status
+        self._broadcast(event, dict(order))
+
     def on_viewer_event(self, payload: dict) -> None:
         drone_id = payload.get("drone_id")
         if not drone_id:
@@ -105,24 +110,16 @@ class FleetManager:
 
         assigned = self._pick_drone_for(dest)
         if assigned is None:
-            self.db.update_order(order_id, status="failed")
-            order["status"] = "failed"
-            self._broadcast("order_failed", {
-                "order_id": order_id,
-                "reason": "no drone with enough battery for the round-trip",
-            })
+            self._set_order_status(order, "failed", "order_failed")
             raise RuntimeError("No drone has enough battery to reach the destination and return")
         drone, path = assigned
-        drone["status"] = "assigned"
-        drone["medicine"] = medicine
-        drone["order_id"] = order_id
-        mission_id = self.db.create_mission(order_id, drone["id"], path)
-        drone["mission_id"] = mission_id
+        drone.update({
+            "status": "assigned", "medicine": medicine, "order_id": order_id,
+            "mission_id": self.db.create_mission(order_id, drone["id"], path),
+        })
         self.db.upsert_drone(drone)
         self.db.update_order(order_id, drone_id=drone["id"], status="assigned")
-        order["drone_id"] = drone["id"]
-        order["status"] = "assigned"
-        order["route"] = path
+        order.update({"drone_id": drone["id"], "status": "assigned", "route": path})
         self._broadcast("order_assigned", order)
         self._broadcast("drone_updated", dict(drone))
         self.bridge.send_command(drone["id"], "new_order", order_id=order_id, medicine=medicine)
@@ -137,23 +134,18 @@ class FleetManager:
         if order is None:
             raise RuntimeError(f"order {order_id} not found in memory")
         route = order.get("route") or []
-        dest = (order["dest_x"], order["dest_y"])
         self.bridge.send_command(drone_id, "stop_charge")
         self.bridge.send_command(drone_id, "medicine_loaded",
-                                 destination=list(dest),
+                                 destination=[order["dest_x"], order["dest_y"]],
                                  route=[list(p) for p in route])
-        self.db.update_order(order_id, status="in_transit")
-        order["status"] = "in_transit"
-        self._broadcast("order_in_transit", dict(order))
+        self._set_order_status(order, "in_transit", "order_in_transit")
 
     def confirm_delivery_received(self, order_id: int) -> None:
         order = self.orders.get(order_id)
         if order is None or order.get("drone_id") is None:
             raise RuntimeError(f"unknown order {order_id}")
         self.bridge.send_command(order["drone_id"], "delivery_completed", order_id=order_id)
-        self.db.update_order(order_id, status="delivered")
-        order["status"] = "delivered"
-        self._broadcast("order_delivered", dict(order))
+        self._set_order_status(order, "delivered", "order_delivered")
 
     def cancel_order(self, order_id: int) -> None:
         order = self.orders.get(order_id)
@@ -161,9 +153,7 @@ class FleetManager:
             return
         if order.get("drone_id"):
             self.bridge.send_command(order["drone_id"], "cancel", order_id=order_id)
-        self.db.update_order(order_id, status="cancelled")
-        order["status"] = "cancelled"
-        self._broadcast("order_cancelled", dict(order))
+        self._set_order_status(order, "cancelled", "order_cancelled")
 
     def return_drone(self, drone_id: str) -> None:
         drone = self._get_drone(drone_id)
@@ -215,16 +205,12 @@ class FleetManager:
         drone = self.drones.get(drone_id)
         if drone is None:
             return
-        handler = {
-            "status": self._handle_status,
-            "telemetry": self._handle_telemetry,
-            "battery": self._handle_battery,
-            "event": self._handle_event,
-        }.get(channel)
-        if handler:
-            handler(drone, payload)
-        elif channel == "display":
+        if channel == "display":
             self._broadcast("drone_display", {"drone_id": drone_id, **payload})
+            return
+        fn = getattr(self, f"_handle_{channel}", None)
+        if fn:
+            fn(drone, payload)
 
     def _handle_status(self, drone: dict, payload: dict) -> None:
         status = payload.get("status", "")
@@ -258,43 +244,23 @@ class FleetManager:
             log.warning("[%s] went empty mid-flight — emergency landed", drone["id"])
             drone["status"] = "emergency_landed_empty"
             self.db.upsert_drone(drone)
-            order_id = drone.get("order_id")
-            if order_id:
-                order = self.orders.get(order_id)
-                if order and order.get("status") not in ("cancelled", "completed"):
-                    self.db.update_order(order_id, status="failed")
-                    order["status"] = "failed"
-                    self._broadcast("order_failed", {
-                        "order_id": order_id,
-                        "reason": f"{drone['id']} battery empty mid-flight",
-                    })
+            order = self.orders.get(drone.get("order_id"))
+            if order and order.get("status") not in ("cancelled", "completed"):
+                self._set_order_status(order, "failed", "order_failed")
             self._broadcast("drone_updated", dict(drone))
 
     def _handle_event(self, drone: dict, payload: dict) -> None:
         kind = payload.get("kind", "")
+        order = self.orders.get(drone.get("order_id"))
         if kind == "arrived_at_client":
-            order_id = drone.get("order_id")
-            if order_id:
-                self.db.update_order(order_id, status="arrived")
-                order = self.orders.get(order_id)
-                if order:
-                    order["status"] = "arrived"
-                    self._broadcast("order_arrived", dict(order))
+            if order:
+                self._set_order_status(order, "arrived", "order_arrived")
         elif kind == "returned_home":
-            mission_id = drone.get("mission_id")
-            order_id = drone.get("order_id")
-            if mission_id:
-                self.db.update_mission(mission_id, status="completed",
+            if drone.get("mission_id"):
+                self.db.update_mission(drone["mission_id"], status="completed",
                                        completed_at=datetime.utcnow().isoformat())
-            if order_id:
-                order = self.orders.get(order_id)
-                if order and order.get("status") != "cancelled":
-                    self.db.update_order(order_id, status="completed")
-                    order["status"] = "completed"
-                    self._broadcast("order_completed", dict(order))
-            drone["order_id"] = None
-            drone["mission_id"] = None
-            drone["medicine"] = ""
-            drone["status"] = "docked"
+            if order and order.get("status") != "cancelled":
+                self._set_order_status(order, "completed", "order_completed")
+            drone.update({"order_id": None, "mission_id": None, "medicine": "", "status": "docked"})
             self.db.upsert_drone(drone)
             self._broadcast("drone_updated", dict(drone))

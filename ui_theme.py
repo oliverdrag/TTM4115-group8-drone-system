@@ -69,6 +69,10 @@ def header_bar(parent, title_text, subtitle_var=None, right_var=None):
     return bar
 
 
+def panel(parent):
+    return tk.Frame(parent, bg=BG_PANEL, highlightthickness=1, highlightbackground=BORDER)
+
+
 def _btn(parent, text, command, bg, fg, width=None):
     btn = tk.Button(parent, text=text, command=command, bg=bg, fg=fg,
                     activebackground=bg, activeforeground=fg,

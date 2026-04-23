@@ -102,13 +102,16 @@ def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
             return jsonify(row)
         return jsonify(order)
 
-    @app.post("/api/orders/<int:order_id>/complete")
-    def complete_order(order_id: int):
+    def _ok(fn, *args):
         try:
-            fleet.confirm_delivery_received(order_id)
+            fn(*args)
         except RuntimeError as e:
             return jsonify({"error": str(e)}), 400
         return jsonify({"ok": True})
+
+    @app.post("/api/orders/<int:order_id>/complete")
+    def complete_order(order_id: int):
+        return _ok(fleet.confirm_delivery_received, order_id)
 
     @app.post("/api/orders/<int:order_id>/cancel")
     def cancel_order(order_id: int):
@@ -117,19 +120,11 @@ def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
 
     @app.post("/api/drones/<drone_id>/medicine_loaded")
     def medicine_loaded(drone_id: str):
-        try:
-            fleet.confirm_medicine_loaded(drone_id)
-        except RuntimeError as e:
-            return jsonify({"error": str(e)}), 400
-        return jsonify({"ok": True})
+        return _ok(fleet.confirm_medicine_loaded, drone_id)
 
     @app.post("/api/drones/<drone_id>/return")
     def return_drone(drone_id: str):
-        try:
-            fleet.return_drone(drone_id)
-        except RuntimeError as e:
-            return jsonify({"error": str(e)}), 400
-        return jsonify({"ok": True})
+        return _ok(fleet.return_drone, drone_id)
 
     @app.get("/api/missions/<drone_id>/path")
     def mission_path(drone_id: str):

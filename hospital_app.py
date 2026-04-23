@@ -74,6 +74,9 @@ class DroneApp:
             return ""
         return f"({drone.get('x', '?')}, {drone.get('y', '?')})"
 
+    _CSV_COLS = [("event_type", 14), ("drone_id", 10), ("command", 18),
+                 ("status", 24), ("medicine", 14)]
+
     def _refresh_csv_view(self) -> None:
         self.csv_table.config(state="normal")
         self.csv_table.delete("1.0", "end")
@@ -81,14 +84,8 @@ class DroneApp:
             with open(self.csv_path, "r", encoding="utf-8") as f:
                 rows = list(csv.DictReader(f))
             for row in reversed(rows[-50:]):
-                ts = row.get("timestamp", "")
-                etype = (row.get("event_type", "") or "").ljust(14)
-                did = (row.get("drone_id", "") or "").ljust(10)
-                cmd = (row.get("command", "") or "").ljust(18)
-                st = (row.get("status", "") or "").ljust(24)
-                med = (row.get("medicine", "") or "").ljust(14)
-                msg = row.get("message", "")
-                self.csv_table.insert("end", f"{ts}  {etype}  {did}  {cmd}  {st}  {med}  {msg}\n")
+                parts = [row.get("timestamp", "")] + [(row.get(k, "") or "").ljust(w) for k, w in self._CSV_COLS]
+                self.csv_table.insert("end", "  ".join(parts) + f"  {row.get('message', '')}\n")
         except Exception as e:
             self.csv_table.insert("end", f"(could not read CSV: {e})\n")
         self.csv_table.config(state="disabled")
@@ -130,8 +127,7 @@ class DroneApp:
 
         right = tk.Frame(main, bg=theme.BG)
         right.pack(side="left", fill="both", expand=True)
-        self.detail_card = tk.Frame(right, bg=theme.BG_PANEL,
-                                    highlightthickness=1, highlightbackground=theme.BORDER)
+        self.detail_card = theme.panel(right)
         self.detail_card.pack(fill="x")
         self.detail_label = tk.Label(self.detail_card, text="No drone selected",
                                      fg=theme.FG_MUTED, bg=theme.BG_PANEL,
@@ -163,8 +159,7 @@ class DroneApp:
         theme.danger_button(btn_frame, "Return", self._on_return).pack(side="left", padx=4)
         theme.neutral_button(btn_frame, "Back", self._deselect).pack(side="left", padx=4)
 
-        viz = tk.Frame(right, bg=theme.BG_PANEL,
-                       highlightthickness=1, highlightbackground=theme.BORDER)
+        viz = theme.panel(right)
         viz.pack(fill="x", pady=(10, 0))
         tk.Label(viz, text="Fleet map", bg=theme.BG_PANEL, fg=theme.FG,
                  font=theme.FONT_LABEL).pack(anchor="w", padx=14, pady=(10, 2))
@@ -199,8 +194,7 @@ class DroneApp:
         self._refresh_csv_view()
 
     def _make_drone_button(self, drone: dict) -> None:
-        row = tk.Frame(self.drone_list_frame, bg=theme.BG_PANEL,
-                       highlightthickness=1, highlightbackground=theme.BORDER)
+        row = theme.panel(self.drone_list_frame)
         row.pack(fill="x", pady=3)
         row._drone_id = drone["id"]  # type: ignore[attr-defined]
         stripe = tk.Frame(row, bg=theme.drone_color(drone["id"]), width=6)

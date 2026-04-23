@@ -101,7 +101,7 @@ class UserFrontend:
                  fg=theme.FG_MUTED, font=theme.FONT_MONO).pack(side="right", padx=18)
 
     def _card(self, parent):
-        c = tk.Frame(parent, bg=theme.BG_PANEL, highlightthickness=1, highlightbackground=theme.BORDER)
+        c = theme.panel(parent)
         c.pack(fill="both", expand=True)
         return c
 

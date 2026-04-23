@@ -160,16 +160,14 @@ class Drone:
             return
         command = payload.get("command", "")
         log.info("[%s] ← %s: %s", self.drone_id, command, payload)
-        flight_cmds = {"new_order", "cancel", "delivery_completed"}
-        battery_cmds = {"charge", "stop_charge"}
         if command == "medicine_loaded":
             route = payload.get("route", [])
             self.display.set_path(route, drone_id=self.drone_id)
             self.driver.send("medicine_loaded", "flight_control",
                              args=[payload.get("destination", []), route])
-        elif command in flight_cmds:
+        elif command in ("new_order", "cancel", "delivery_completed"):
             self.driver.send(command, "flight_control")
-        elif command in battery_cmds:
+        elif command in ("charge", "stop_charge"):
             self.driver.send(command, "battery")
         else:
             log.warning("[%s] unknown command %r", self.drone_id, command)
