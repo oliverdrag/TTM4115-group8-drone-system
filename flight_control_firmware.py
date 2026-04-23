@@ -27,51 +27,80 @@ TIMEOUT_DURATION_MS = 3 * 60 * 1000
 class FlightControl:
 
     def on_init(self):
-        pass
+        print("Flight control firmware initialized. Drone is docked.")
+        self.client_loc = None
+        self.send_status("docked")
+        self.display("docked")
 
     def send_status(self, status):
-        pass
+        payload = json.dumps({"status": status})
+        print("STATUS -> {}".format(status))
+        self.mqtt_client.publish(MQTT_TOPIC_STATUS, payload)
 
     def display(self, message):
-        pass
+        payload = json.dumps({"display": message})
+        print("DISPLAY: {}".format(message))
+        self.mqtt_client.publish(MQTT_TOPIC_DISPLAY, payload)
 
     def open_storage(self):
-        pass
+        print("[hardware] storage hatch opened")
 
     def close_storage(self):
-        pass
+        print("[hardware] storage hatch closed")
 
     def land(self):
-        pass
+        print("[hardware] drone landed")
 
-    def init_flight(self):
-        pass
+    def init_flight(self, location):
+        if location == "home":
+            self.stm.start_timer("flight_done_home", FLIGHT_DURATION_MS)
+        else:
+            self.stm.start_timer("flight_done_client", FLIGHT_DURATION_MS)
 
     # ---- TRANSITION EFFECTS (TERMINAL UI) ----
 
     def start_loading(self):
-        pass
+        self.display("load medicine")
+        self.send_status("loading medicine")
 
     def cancel_to_docked(self):
-        pass
+        self.send_status("docking")
+        self.display("docking")
 
     def start_travel(self, client_loc="client"):
-        pass
+        self.client_loc = client_loc
+        self.close_storage()
+        self.initiate_flight(client_loc)
+        self.send_status("flight started")
+        self.display("flight started")
 
     def cancel_to_returning(self):
-        pass
+        self.initiate_flight("home")
+        self.send_status("cancel, returning")
+        self.display("returning")
 
     def arrive_at_client(self):
-        pass
+        self.send_status("arrived, unloading medicine")
+        self.display("pick up medicine")
+        self.open_storage()
 
     def deliver_complete(self):
-        pass
+        self.close_storage()
+        self.display("returning")
+        self.initiate_flight("home")
+        self.send_status("delivered, returning")
 
     def deliver_timeout(self):
-        pass
+        self.close_storage()
+        self.display("returning")
+        self.initiate_flight("home")
+        self.send_status("timed out, returning")
 
     def arrive_at_home(self):
-        pass
+        self.land()
+        self.send_status("returned")
+        self.open_storage()
+        self.display("returned, check for remaining medicine")
 
 
 # ---- STATES / TRANSITIONS ----
@@ -83,7 +112,7 @@ t0 = {
     "effect": "on_init()",
 }
 
-# State for docked: new order -> load medicines
+# State for stasjonært/Docked: ny ordre ->last medisiner
 t1 = {
     "trigger": "new_order",
     "source": "docked",
@@ -91,7 +120,7 @@ t1 = {
     "effect": "start_loading",
 }
 
-# Load medicine -- cancel --> Docked
+# Last medisin->avbryt->STasjonert
 t2 = {
     "trigger": "cancel",
     "source": "load_medicine",
@@ -99,7 +128,7 @@ t2 = {
     "effect": "cancel_to_docked",
 }
 
-# Load medicine -- medicine_loaded --> Travel to client
+# Last medisin->medisin lastet->Fly to person i nød
 t3 = {
     "trigger": "medicine_loaded",
     "source": "load_medicine",
@@ -107,7 +136,7 @@ t3 = {
     "effect": "start_travel(*)",
 }
 
-# Travel to client -- cancel --> Returning
+# Person i nød->avbryt->Returning
 t4 = {
     "trigger": "cancel",
     "source": "travel_to_client",
@@ -115,7 +144,7 @@ t4 = {
     "effect": "cancel_to_returning",
 }
 
-# Travel to client -- arrived --> Deliver
+# Person i nød->fremme->levering
 t5 = {
     "trigger": "flight_done_client",
     "source": "travel_to_client",
@@ -123,7 +152,7 @@ t5 = {
     "effect": "arrive_at_client; start_timer('delivery_timeout', {})".format(TIMEOUT_DURATION_MS),
 }
 
-# Deliver -- delivery_completed --> Returning
+# Levering->delivery_completed->DRa tilbake
 t6 = {
     "trigger": "delivery_completed",
     "source": "deliver",
@@ -131,7 +160,7 @@ t6 = {
     "effect": "stop_timer('delivery_timeout'); deliver_complete",
 }
 
-# Deliver -- t1 (timeout) --> Returning
+# Levering- t1 (timeout)-> Dra tilbake
 t7 = {
     "trigger": "delivery_timeout",
     "source": "deliver",
@@ -139,7 +168,7 @@ t7 = {
     "effect": "deliver_timeout",
 }
 
-# Returning -- returned --> Docked
+# Drar tilbake->kommet tilbake-> Stasjonært
 t8 = {
     "trigger": "flight_done_home",
     "source": "returning",
