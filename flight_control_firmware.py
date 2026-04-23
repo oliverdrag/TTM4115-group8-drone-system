@@ -194,15 +194,43 @@ flight_control.stm = flight_control_machine
 
 class DroneMQTTClient(mqtt.Client):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
 
     def on_connect(self, client, userdata, flags, rc):
-        pass
+        print("on_connect(): {}".format(reason_code))
+
 
     def on_message(self, client, userdata, msg):
-        pass
+        print("on_message(): topic: {} payload: {}".format(msg.topic, msg.payload.decode("utf-8")))
 
+
+        try:
+            payload = json.loads(msg.payload.decode("utf-8"))
+        except json.JSONDecodeError:
+            print("Invalid JSON payload, ignoring message.")
+            return
+        
+        if msg.topic != MQTT_TOPIC_COMMAND:
+            return
+        
+
+        command = payload.get("command", "")
+
+
+        if command == "new_order":
+            self.stm_driver.send("new_order", "flight_control")
+        elif command == "medicine_loaded":
+            client_loc = payload.get("client_loc", "client")
+            self.stm_driver.send("medicine_loaded", "flight_control", args=[client_loc])
+        elif command == "cancel":
+            self.stm_driver.send("cancel", "flight_control")
+        elif command == "delivery_completed":
+            self.stm_driver.send("delivery_completed", "flight_control")
+        else:
+            print("Unknown command: {}".format(command))
 
 # ---- MQTT DRIVER SETUP ----
 
