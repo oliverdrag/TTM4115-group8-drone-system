@@ -1,21 +1,9 @@
-"""Mock YR Weather API — REST.
-
-Endpoint:  GET /weather?x=X&y=Y
-Response:  {"location": {"x": X, "y": Y}, "wind": float, "rain_mm": float, "flyable": bool}
-
-The real YR service uses lat/lon + a bigger JSON shape, but since our whole
-world is a 200x200 grid without geo coordinates this keeps the contract
-cheap while still being a separate REST service the app server calls.
-"""
-
 import logging
-import math
 import random
 
 from flask import Flask, jsonify, request
 
 from application_server.config import YR_MOCK_HOST, YR_MOCK_PORT
-
 
 app = Flask(__name__)
 log = logging.getLogger("yr_mock")
@@ -28,23 +16,14 @@ def weather():
         y = int(request.args.get("y", 0))
     except ValueError:
         return jsonify({"error": "x,y must be integers"}), 400
-
-    # Deterministic-per-cell pseudo-weather, so repeated queries are stable
-    # within a server run but vary across cells.
-    seed = (x * 7919 + y * 104729) ^ 0xC0FFEE
-    rng = random.Random(seed)
+    rng = random.Random((x * 7919 + y * 104729) ^ 0xC0FFEE)
     wind = round(rng.uniform(0, 14), 1)
     rain = round(max(0.0, rng.uniform(-5, 6)), 1)
-    flyable = wind < 12 and rain < 5.0
-
-    return jsonify(
-        {
-            "location": {"x": x, "y": y},
-            "wind": wind,
-            "rain_mm": rain,
-            "flyable": flyable,
-        }
-    )
+    return jsonify({
+        "location": {"x": x, "y": y},
+        "wind": wind, "rain_mm": rain,
+        "flyable": wind < 12 and rain < 5.0,
+    })
 
 
 @app.get("/health")

@@ -1,21 +1,3 @@
-"""Flask REST + WebSocket interface for the application server.
-
-REST endpoints:
-  GET  /api/health                         — liveness
-  GET  /api/grid                           — grid size + restricted zones
-  GET  /api/drones                         — live drone fleet
-  POST /api/orders                         — user submits an order
-  GET  /api/orders/<id>                    — user polls order status
-  POST /api/orders/<id>/complete           — user confirms delivery received
-  POST /api/orders/<id>/cancel             — user cancels
-  POST /api/drones/<id>/medicine_loaded    — hospital confirms loading
-  POST /api/drones/<id>/return             — hospital orders a return
-  GET  /api/missions/<drone_id>/path       — current route for a drone
-
-WebSocket:
-  /ws/live — fan-out of fleet/order events as JSON frames
-"""
-
 import json
 import logging
 import queue
@@ -24,77 +6,55 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sock import Sock
 
-from .config import (
-    APP_SERVER_HOST,
-    APP_SERVER_PORT,
-    DB_PATH,
-    GRID_HEIGHT,
-    GRID_WIDTH,
-)
+from .config import APP_SERVER_HOST, APP_SERVER_PORT, DB_PATH, GRID_HEIGHT, GRID_WIDTH
 from .database import Database
 from .fleet_manager import FleetManager
 from .grid import Grid, generate_zones
 from .mqtt_bridge import MQTTBridge
 from .pathfinding import astar
 
-
 log = logging.getLogger("server")
 
 
 def build_app() -> tuple[Flask, FleetManager]:
     db = Database(DB_PATH)
-
-    # Load zones: prefer the airspace service, fall back to cached snapshot,
-    # and finally synthesize fresh blobs so the server still comes up even
-    # when the mocks aren't running.
     zones = _load_zones(db)
     grid = Grid.from_zones(GRID_WIDTH, GRID_HEIGHT, zones)
     db.save_grid_snapshot(GRID_WIDTH, GRID_HEIGHT, json.dumps(zones))
 
     bridge = MQTTBridge(
-        on_event=lambda drone_id, channel, payload: fleet.on_mqtt_event(drone_id, channel, payload),
-        on_viewer=lambda payload: fleet.on_viewer_event(payload),
+        on_event=lambda d, c, p: fleet.on_mqtt_event(d, c, p),
+        on_viewer=lambda p: fleet.on_viewer_event(p),
     )
     fleet = FleetManager(db=db, grid=grid, bridge=bridge)
 
     app = Flask(__name__)
     CORS(app)
     sock = Sock(app)
-
     _register_rest(app, fleet, grid)
     _register_ws(sock, fleet)
-
-    # Start MQTT after Flask objects exist so the callback can fire safely.
     bridge.start()
-
     return app, fleet
 
 
 def _load_zones(db: Database) -> list[dict]:
-    from .airspace_client import fetch_restricted_zones  # lazy import
-
+    from .airspace_client import fetch_restricted_zones
     try:
         zones = fetch_restricted_zones(GRID_WIDTH, GRID_HEIGHT)
         log.info("Loaded %d restricted zones from airspace service", len(zones))
         return [{"id": z["id"], "name": z["name"], "cells": [list(c) for c in z["cells"]]} for z in zones]
     except Exception as exc:
         log.warning("Airspace service unavailable (%s); falling back to cache/synth", exc)
-
     snapshot = db.load_grid_snapshot()
     if snapshot:
         try:
             return json.loads(snapshot["zones_json"])
         except Exception:
             pass
-
-    log.info("Generating synthetic restricted zones")
     from .config import DRONES
-
-    reserved = [tuple(d["home"]) for d in DRONES]
-    return generate_zones(GRID_WIDTH, GRID_HEIGHT, reserved=reserved, seed=42)
+    return generate_zones(GRID_WIDTH, GRID_HEIGHT, reserved=[tuple(d["home"]) for d in DRONES], seed=42)
 
 
-# ---- REST --------------------------------------------------------------
 def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
     @app.get("/api/health")
     def health():
@@ -119,8 +79,7 @@ def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
         medicine = (data.get("medicine") or "").strip()
         location = data.get("location") or {}
         try:
-            x = int(location["x"])
-            y = int(location["y"])
+            x, y = int(location["x"]), int(location["y"])
         except (KeyError, TypeError, ValueError):
             return jsonify({"error": "location.x and location.y must be integers"}), 400
         if not user_name or not medicine:
@@ -179,29 +138,24 @@ def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
             return jsonify({"error": "unknown drone"}), 404
         order_id = drone.get("order_id")
         order = fleet.orders.get(order_id) if order_id else None
-        return jsonify(
-            {
-                "drone_id": drone_id,
-                "position": {"x": drone["x"], "y": drone["y"]},
-                "route": order.get("route") if order else None,
-                "order_id": order_id,
-            }
-        )
+        return jsonify({
+            "drone_id": drone_id,
+            "position": {"x": drone["x"], "y": drone["y"]},
+            "route": order.get("route") if order else None,
+            "order_id": order_id,
+        })
 
     @app.post("/api/path")
     def preview_path():
-        """Utility for the hospital frontend's live pathfinding preview."""
         data = request.get_json(force=True, silent=True) or {}
         try:
             start = (int(data["start"]["x"]), int(data["start"]["y"]))
             goal = (int(data["goal"]["x"]), int(data["goal"]["y"]))
         except (KeyError, TypeError, ValueError):
             return jsonify({"error": "start and goal must have int x,y"}), 400
-        path = astar(grid, start, goal)
-        return jsonify({"path": path})
+        return jsonify({"path": astar(grid, start, goal)})
 
 
-# ---- WebSocket ---------------------------------------------------------
 def _register_ws(sock: Sock, fleet: FleetManager) -> None:
     @sock.route("/ws/live")
     def live(ws):
@@ -211,12 +165,9 @@ def _register_ws(sock: Sock, fleet: FleetManager) -> None:
             try:
                 q.put_nowait({"event": event, "payload": payload})
             except queue.Full:
-                pass  # drop if the client can't keep up
+                pass
 
-        # Prime the connection with a full snapshot so the client has state
-        # before the first delta arrives.
         ws.send(json.dumps({"event": "snapshot", "payload": fleet.snapshot()}))
-
         fleet.add_listener(listener)
         try:
             while True:
@@ -233,12 +184,8 @@ def _register_ws(sock: Sock, fleet: FleetManager) -> None:
 
 
 def run() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
-    )
-    app, _fleet = build_app()
-    # Threaded so WebSocket, REST and MQTT callbacks coexist without blocking.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s %(message)s")
+    app, _ = build_app()
     app.run(host=APP_SERVER_HOST, port=APP_SERVER_PORT, threaded=True, use_reloader=False)
 
 

@@ -1,15 +1,7 @@
-"""200x200 grid with restricted zones generated as organic blobs.
-
-The blobs are meant to feel like no-fly parks, not pin-drop circles. They're
-grown from seed cells via a random walker that picks an adjacent empty
-neighbour at each step until the blob hits its target size.
-"""
-
 import json
 import random
 from collections import deque
 from typing import Iterable
-
 
 FREE = 0
 RESTRICTED = 1
@@ -19,10 +11,9 @@ class Grid:
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
-        self.cells = [[FREE for _ in range(width)] for _ in range(height)]
+        self.cells = [[FREE] * width for _ in range(height)]
         self.zones: list[dict] = []
 
-    # ---- construction ---------------------------------------------------
     @classmethod
     def from_zones(cls, width: int, height: int, zones: list[dict]) -> "Grid":
         grid = cls(width, height)
@@ -33,7 +24,6 @@ class Grid:
                     grid.cells[y][x] = RESTRICTED
         return grid
 
-    # ---- queries --------------------------------------------------------
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
 
@@ -47,97 +37,57 @@ class Grid:
                     yield (x, y)
 
     def to_dict(self) -> dict:
-        return {
-            "width": self.width,
-            "height": self.height,
-            "zones": self.zones,
-        }
+        return {"width": self.width, "height": self.height, "zones": self.zones}
 
 
-def generate_zones(
-    width: int,
-    height: int,
-    num_zones: int = 5,
-    min_size: int = 40,
-    max_size: int = 140,
-    reserved: list[tuple[int, int]] | None = None,
-    seed: int | None = None,
-) -> list[dict]:
-    """Grow `num_zones` organic no-fly blobs. Reserved cells are kept free."""
+ZONE_NAMES = [
+    "Jotunheimen National Park", "Rondane National Park", "Hardangervidda",
+    "Dovrefjell", "Femundsmarka", "Saltfjellet-Svartisen",
+    "Reinheimen", "Hallingskarvet",
+]
+
+
+def generate_zones(width: int, height: int, num_zones: int = 5, min_size: int = 40,
+                   max_size: int = 140, reserved: list[tuple[int, int]] | None = None,
+                   seed: int | None = None) -> list[dict]:
     rng = random.Random(seed)
     reserved_set = set(reserved or [])
-
     taken = set(reserved_set)
     zones: list[dict] = []
-
-    zone_names = [
-        "Jotunheimen National Park",
-        "Rondane National Park",
-        "Hardangervidda",
-        "Dovrefjell",
-        "Femundsmarka",
-        "Saltfjellet-Svartisen",
-        "Reinheimen",
-        "Hallingskarvet",
-    ]
-    rng.shuffle(zone_names)
-
-    # Keep seeds away from the edge and from the hangar corner.
+    names = list(ZONE_NAMES)
+    rng.shuffle(names)
     edge_pad = max(5, min(width, height) // 10)
     hangar_clearance = max(5, min(width, height) // 8)
-
     for i in range(num_zones):
-        for _attempt in range(60):
+        for _ in range(60):
             sx = rng.randint(edge_pad, width - edge_pad - 1)
             sy = rng.randint(edge_pad, height - edge_pad - 1)
             if (sx, sy) in taken:
                 continue
-            # Keep a safe corridor clear so drones can always leave the hangar.
-            if any(
-                abs(sx - rx) + abs(sy - ry) < hangar_clearance for rx, ry in reserved_set
-            ):
+            if any(abs(sx - rx) + abs(sy - ry) < hangar_clearance for rx, ry in reserved_set):
                 continue
             break
         else:
             continue
-
-        target = rng.randint(min_size, max_size)
-        blob = _grow_blob(width, height, (sx, sy), target, taken)
+        blob = _grow_blob(width, height, (sx, sy), rng.randint(min_size, max_size), taken)
         if not blob:
             continue
-        zones.append(
-            {
-                "id": f"zone-{i:02d}",
-                "name": zone_names[i % len(zone_names)],
-                "cells": sorted(blob),
-            }
-        )
+        zones.append({"id": f"zone-{i:02d}", "name": names[i % len(names)], "cells": sorted(blob)})
         taken.update(blob)
-
     return zones
 
 
-def _grow_blob(
-    width: int,
-    height: int,
-    seed: tuple[int, int],
-    target: int,
-    forbidden: set[tuple[int, int]],
-) -> list[tuple[int, int]]:
-    """Random-walker blob growth. Picks a random frontier cell each step."""
+def _grow_blob(width: int, height: int, seed: tuple[int, int], target: int,
+               forbidden: set[tuple[int, int]]) -> list[tuple[int, int]]:
     rng = random.Random((seed[0] * 7919 + seed[1]) & 0xFFFFFFFF)
     if seed in forbidden:
         return []
-
-    blob: set[tuple[int, int]] = {seed}
+    blob = {seed}
     frontier = deque([seed])
-
     while blob and len(blob) < target:
-        # Pop from a random-ish spot to avoid line-shaped growth.
         idx = rng.randrange(len(frontier))
         frontier.rotate(-idx)
         cx, cy = frontier.popleft()
-
         grew = False
         neighbours = [(cx + dx, cy + dy) for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1))]
         rng.shuffle(neighbours)
@@ -146,7 +96,6 @@ def _grow_blob(
                 continue
             if (nx, ny) in blob or (nx, ny) in forbidden:
                 continue
-            # Probabilistic growth gives ragged edges instead of square lumps.
             if rng.random() < 0.55:
                 blob.add((nx, ny))
                 frontier.append((nx, ny))
@@ -154,12 +103,10 @@ def _grow_blob(
                 if len(blob) >= target:
                     break
         if grew:
-            frontier.append((cx, cy))  # keep exploring from here
-
+            frontier.append((cx, cy))
     return list(blob)
 
 
-# ---- JSON helpers ---------------------------------------------------------
 def zones_to_json(zones: list[dict]) -> str:
     return json.dumps(zones)
 
