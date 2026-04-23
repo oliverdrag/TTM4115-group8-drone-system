@@ -87,7 +87,8 @@ def deploy_and_start_pi(host_ip: str) -> subprocess.Popen | None:
          "--exclude=.venv", "--exclude=.git", "--exclude=__pycache__",
          "--exclude=*.db", "--exclude=*.db-journal", "--exclude=*.log",
          "--exclude=images/", "--exclude=diagrams/",
-         "--exclude=hospital_app.py", "--exclude=user_app.py",
+         "--exclude=hospital_computer/", "--exclude=recipient_mobile/",
+         "--exclude=ui_theme.py",
          "./", f"{PI_USER}@{PI_HOST}:{PI_REMOTE}/"],
         cwd=ROOT, check=True,
     )
@@ -151,12 +152,13 @@ def main() -> None:
         time.sleep(0.8)
 
         register("airspace-mock", start("airspace-zone mock   :5001",
-                                        [PY, "-m", "services.airspace_zone_mock"], env))
+                                        [PY, "-m", "mock_services.airspace_zone_mock"], env))
         register("yr-mock", start("yr-weather mock     :5002",
-                                  [PY, "-m", "services.yr_weather_mock"], env))
+                                  [PY, "-m", "mock_services.yr_weather_mock"], env))
         time.sleep(1.2)
 
-        register("app-server", start("application server  :5000", [PY, "app.py"], env))
+        register("app-server", start("application server  :5000",
+                                     [PY, "-m", "application_server.server"], env))
         time.sleep(2.0)
 
         virt_env = {**env, "DISABLE_DISPLAY": "1"}
@@ -172,8 +174,10 @@ def main() -> None:
 
         if LAUNCH_GUIS:
             print("\n== frontends ==")
-            register("user-app", start("user frontend", [PY, "user_app.py"], env))
-            register("hospital-app", start("hospital frontend", [PY, "hospital_app.py"], env))
+            register("user-app", start("user frontend",
+                                       [PY, "-m", "recipient_mobile.user_app"], env))
+            register("hospital-app", start("hospital frontend",
+                                           [PY, "-m", "hospital_computer.hospital_app"], env))
 
         print("\n✓ system up. Ctrl+C to stop everything cleanly.\n")
 

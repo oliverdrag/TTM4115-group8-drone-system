@@ -16,7 +16,7 @@ rsync -az --delete \
   --exclude='.venv' --exclude='.git' --exclude='__pycache__' \
   --exclude='*.db' --exclude='*.db-journal' \
   --exclude='images/' --exclude='diagrams/' \
-  --exclude='hospital_app.py' --exclude='user_app.py' \
+  --exclude='hospital_computer/' --exclude='recipient_mobile/' --exclude='ui_theme.py' \
   ./ "${PI_USER}@${PI_HOST}:${REMOTE_DIR}/"
 
 echo "→ ensuring venv + deps on Pi"

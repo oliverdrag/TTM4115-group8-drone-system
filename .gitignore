@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 drone_log.csv
+drone_system.db
+drone_system.db-journal
