@@ -3,24 +3,8 @@
 Implementation of the emergency-medication drone system described in
 `System Spec, Version 3`. The deployment follows the spec diagram:
 
-```
-┌────────────────┐      HTTPS/REST      ┌────────────────────────────┐
-│ User Frontend  │ ───────────────────▶ │                            │
-└────────────────┘                      │    Application Server      │
-                                        │   ┌────────────────────┐   │
-┌────────────────┐   HTTPS/WS + REST    │   │ Order Processing   │   │      GraphQL      ┌───────────────────────┐
-│ Hospital       │ ───────────────────▶ │   │ Fleet Manager      │ ◀────────────────────▶│ Airspace Zone Service │
-│ Frontend       │                      │   │ Mission & Drone DB │   │      REST         └───────────────────────┘
-└────────────────┘                      │   └────────────────────┘ ◀────────────────────▶│ YR Weather API        │
-                                        └──────────────┬─────────────┘                   └───────────────────────┘
-                                                       │ MQTT
-                                         ┌─────────────▼──────────────┐
-                                         │    Autonomous Drone (Pi)   │
-                                         │ Flight Control STM         │
-                                         │ Battery Management STM     │
-                                         │ Navigation Module (mocked) │
-                                         └────────────────────────────┘
-```
+<img width="632" height="606" alt="Skjermbilde 2026-04-23 kl  14 55 29" src="https://github.com/user-attachments/assets/fbfc17ec-da8c-450f-8a02-68d11f10dae0" />
+
 
 ## Layout
 
