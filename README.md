@@ -1,10 +1,9 @@
-# TTM4115 Group 8 — Drone Delivery System
+# TTM4115 Group 8 Drone Delivery System
 
 Implementation of the emergency-medication drone system described in
 `System Spec, Version 3`. The deployment follows the spec diagram:
 
 <img width="632" height="606" alt="Skjermbilde 2026-04-23 kl  14 55 29" src="https://github.com/user-attachments/assets/fbfc17ec-da8c-450f-8a02-68d11f10dae0" />
-
 
 ## Layout
 
@@ -34,6 +33,15 @@ ssh-copy-id group8@group8-drone.local  # passwordless SSH for rsync/deploy
 ```bash
 python run_all.py
 ```
+Flags:
+
+| Env var         | Purpose                                                   |
+|-----------------|-----------------------------------------------------------|
+| `SKIP_PI=1`     | Laptop-only — skip rsync + Pi drone                       |
+| `LAUNCH_GUIS=0` | Headless mode — no tkinter frontends                      |
+| `PI_HOST=...`   | Override Pi hostname (default `group8-drone.local`)       |
+| `PI_USER=...`   | Override Pi user (default `group8`)                       |
+| `NAV_TICK_MS=`  | Flight speed — ms per grid cell (default `500`)           |
 
 That single command:
 
@@ -46,38 +54,6 @@ That single command:
 5. Opens the user frontend and the hospital frontend
 
 Ctrl+C tears down every process, including the remote drone on the Pi.
-
-Useful overrides:
-
-| Env var         | Purpose                                                   |
-|-----------------|-----------------------------------------------------------|
-| `SKIP_PI=1`     | Laptop-only — skip rsync + Pi drone                       |
-| `LAUNCH_GUIS=0` | Headless mode — no tkinter frontends                      |
-| `PI_HOST=...`   | Override Pi hostname (default `group8-drone.local`)       |
-| `PI_USER=...`   | Override Pi user (default `group8`)                       |
-| `NAV_TICK_MS=`  | Flight speed — ms per grid cell (default `500`)           |
-
-## Running pieces by hand
-
-```bash
-python -m services.airspace_zone_mock   # :5001
-python -m services.yr_weather_mock      # :5002
-python app.py                           # :5000 (reads MQTT_PORT env var)
-python -m drone.drone_main drone-02     # one per drone id
-python user_app.py
-python hospital_app.py
-```
-
-To run the drone on the Pi manually:
-
-```bash
-./deploy_pi.sh drone-01                # rsync + launch in one step
-# or:
-ssh group8@group8-drone.local \
-  "cd drone-system && MQTT_BROKER=<laptop-ip> MQTT_PORT=1884 \
-   APP_SERVER_URL=http://<laptop-ip>:5000 \
-   .venv/bin/python -m drone.drone_main drone-01"
-```
 
 ## REST API (application server)
 
@@ -100,14 +76,14 @@ ssh group8@group8-drone.local \
 
 - **Grid**: 200×200 tiles, each cell either free or restricted. The
   airspace zone mock generates zones using random-walker blob growth from
-  several seed points — feels like a few national parks rather than drawn
+  several seed points. this should feel like a few national parks rather than drawn
   circles.
 - **Coordinates**: the user frontend picks a random free cell on order
   submission. Hangars are clustered at the top-left corner (see
   `application_server/config.DRONES`).
 - **A***: 4-connected, Manhattan heuristic. Runs on the app server at
   order time; the outbound route is pushed to the drone over MQTT.
-- **Return flight**: the drone retraces its trail — always clear,
+- **Return flight**: the drone retraces its trail, always clear,
   without re-running A*.
 
 ## State machines
@@ -132,19 +108,3 @@ ssh group8@group8-drone.local \
 | drone → server   | `ttm4115/group8/drone/<id>/battery`            | `{state}`                |
 | drone → server   | `ttm4115/group8/drone/<id>/event`              | `{kind, ...}`            |
 | drone → server   | `ttm4115/group8/drone/<id>/display`            | `{display}`              |
-
-## Environment variables
-
-| Variable              | Default            | Notes                                   |
-|-----------------------|--------------------|-----------------------------------------|
-| `APP_SERVER_HOST`     | `0.0.0.0`          |                                         |
-| `APP_SERVER_PORT`     | `5000`             |                                         |
-| `APP_SERVER_URL`      | `http://localhost:5000` | used by the frontends              |
-| `MQTT_BROKER`         | `localhost`        | set on the Pi                           |
-| `MQTT_PORT`           | `1883`             |                                         |
-| `AIRSPACE_SERVICE_URL`| `http://localhost:5001/graphql` |                             |
-| `YR_SERVICE_URL`      | `http://localhost:5002` |                                    |
-| `DB_PATH`             | `drone_system.db`  |                                         |
-| `NAV_TICK_MS`         | `150`              | flight speed (ms per grid cell)         |
-| `BATTERY_TICK_MS`     | `30000`            | battery state duration                  |
-| `DELIVERY_TIMEOUT_MS` | `180000`           | drone hovers this long for the recipient|
