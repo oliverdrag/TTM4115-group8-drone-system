@@ -51,7 +51,10 @@ def build_app() -> tuple[Flask, FleetManager]:
     grid = Grid.from_zones(GRID_WIDTH, GRID_HEIGHT, zones)
     db.save_grid_snapshot(GRID_WIDTH, GRID_HEIGHT, json.dumps(zones))
 
-    bridge = MQTTBridge(on_event=lambda drone_id, channel, payload: fleet.on_mqtt_event(drone_id, channel, payload))
+    bridge = MQTTBridge(
+        on_event=lambda drone_id, channel, payload: fleet.on_mqtt_event(drone_id, channel, payload),
+        on_viewer=lambda payload: fleet.on_viewer_event(payload),
+    )
     fleet = FleetManager(db=db, grid=grid, bridge=bridge)
 
     app = Flask(__name__)
@@ -104,6 +107,10 @@ def _register_rest(app: Flask, fleet: FleetManager, grid: Grid) -> None:
     @app.get("/api/drones")
     def list_drones():
         return jsonify({"drones": [dict(d) for d in fleet.drones.values()]})
+
+    @app.get("/api/viewer")
+    def get_viewer():
+        return jsonify(dict(fleet.viewer))
 
     @app.post("/api/orders")
     def create_order():

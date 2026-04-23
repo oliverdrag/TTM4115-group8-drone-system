@@ -40,9 +40,17 @@ def drone_topic(drone_id: str, channel: str) -> str:
     return f"{MQTT_TOPIC_ROOT}/drone/{drone_id}/{channel}"
 
 
+def viewer_topic() -> str:
+    """Singleton topic for Sense-HAT viewport state (which drone is being followed)."""
+    return f"{MQTT_TOPIC_ROOT}/viewer/status"
+
+
 # ---- Grid ----
-GRID_WIDTH = 200
-GRID_HEIGHT = 200
+# World is an 8 km × 8 km square rendered as 80 × 80 tiles of 100 m each.
+# The Sense HAT (8 × 8 LEDs) shows the grid downsampled 10×.
+METERS_PER_CELL = 100
+GRID_WIDTH = 80
+GRID_HEIGHT = 80
 
 
 # ---- Database ----
@@ -63,8 +71,12 @@ DRONES = [
 
 # ---- Simulation tuning ----
 # How long the navigation module spends on each grid cell while flying.
-NAV_TICK_MS = int(os.environ.get("NAV_TICK_MS", "150"))
+# 500 ms @ 100 m/cell → 200 m/s effective sim speed, one full traversal ≈ 40 s.
+NAV_TICK_MS = int(os.environ.get("NAV_TICK_MS", "500"))
 # Duration of each battery stage per the state-machine diagram (30 s in the spec).
 BATTERY_TICK_MS = int(os.environ.get("BATTERY_TICK_MS", "30000"))
 # Time the drone waits for the recipient before giving up and returning.
 DELIVERY_TIMEOUT_MS = int(os.environ.get("DELIVERY_TIMEOUT_MS", "180000"))
+# Safety factor — only commit a drone if the round-trip takes less than
+# this fraction of its remaining battery runway.
+BATTERY_SAFETY_MARGIN = float(os.environ.get("BATTERY_SAFETY_MARGIN", "0.9"))

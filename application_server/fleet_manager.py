@@ -14,7 +14,12 @@ import threading
 from datetime import datetime
 from typing import Callable, Optional
 
-from .config import DRONES
+from .config import (
+    BATTERY_SAFETY_MARGIN,
+    BATTERY_TICK_MS,
+    DRONES,
+    NAV_TICK_MS,
+)
 from .database import Database
 from .grid import Grid
 from .mqtt_bridge import MQTTBridge
@@ -36,6 +41,8 @@ class FleetManager:
         self.drones: dict[str, dict] = {}
         # order_id -> current state snapshot (subset of DB row + live path)
         self.orders: dict[int, dict] = {}
+        # Last-reported Sense-HAT viewport state (which drone is being followed).
+        self.viewer: dict = {}
 
         self._bootstrap_drones()
 
@@ -87,7 +94,20 @@ class FleetManager:
             return {
                 "drones": [dict(d) for d in self.drones.values()],
                 "orders": [dict(o) for o in self.orders.values()],
+                "viewer": dict(self.viewer),
             }
+
+    # ---- viewer (Sense-HAT focus drone) --------------------------------
+    def on_viewer_event(self, payload: dict) -> None:
+        drone_id = payload.get("drone_id")
+        if not drone_id:
+            return
+        with self._lock:
+            self.viewer = {
+                "drone_id": drone_id,
+                "zoom_level": payload.get("zoom_level"),
+            }
+        self._broadcast("viewer_changed", dict(self.viewer))
 
     # ---- order lifecycle -----------------------------------------------
     def submit_order(self, user_name: str, medicine: str, dest: tuple[int, int]) -> dict:
@@ -111,19 +131,19 @@ class FleetManager:
 
         self._broadcast("order_created", order)
 
-        drone = self._find_available_drone()
-        if drone is None:
+        assigned = self._pick_drone_for(dest)
+        if assigned is None:
             self.db.update_order(order_id, status="failed")
             order["status"] = "failed"
-            self._broadcast("order_failed", {"order_id": order_id, "reason": "no drones"})
-            raise RuntimeError("No drones available")
-
-        path = astar(self.grid, (drone["x"], drone["y"]), dest)
-        if path is None:
-            self.db.update_order(order_id, status="failed")
-            order["status"] = "failed"
-            self._broadcast("order_failed", {"order_id": order_id, "reason": "no route"})
-            raise RuntimeError("No route to destination")
+            self._broadcast(
+                "order_failed",
+                {"order_id": order_id,
+                 "reason": "no drone with enough battery for the round-trip"},
+            )
+            raise RuntimeError(
+                "No drone has enough battery to reach the destination and return"
+            )
+        drone, path = assigned
 
         # Reserve the drone and create the mission record.
         drone["status"] = "assigned"
@@ -155,6 +175,8 @@ class FleetManager:
             raise RuntimeError(f"order {order_id} not found in memory")
         route = order.get("route") or []
         dest = (order["dest_x"], order["dest_y"])
+        # Leaving the dock: battery stops charging and starts discharging.
+        self.bridge.send_command(drone_id, "stop_charge")
         self.bridge.send_command(
             drone_id,
             "medicine_loaded",
@@ -196,17 +218,73 @@ class FleetManager:
         self._broadcast("drone_updated", dict(drone))
 
     # ---- selection ------------------------------------------------------
-    def _find_available_drone(self) -> Optional[dict]:
+    # Any state where the drone is physically docked (including actively
+    # charging) means we can dispatch it — the battery STM exits the
+    # charging state on `stop_charge` which the dispatch always sends first.
+    _AVAILABLE_BATTERY = {"high", "low", "high_charging", "low_charging"}
+    _BATTERY_PRIORITY = {
+        "high_charging": 0,
+        "high": 1,
+        "low_charging": 2,
+        "low": 3,
+    }
+
+    # Remaining flight runway (ms) at the start of flight, by battery state.
+    # Matches the battery STM: discharge goes high → low → empty, one
+    # BATTERY_TICK_MS per transition.
+    _BATTERY_RUNWAY_MS = {
+        "high":          2 * BATTERY_TICK_MS,
+        "high_charging": 2 * BATTERY_TICK_MS,
+        "low":           1 * BATTERY_TICK_MS,
+        "low_charging":  1 * BATTERY_TICK_MS,
+    }
+
+    def _pick_drone_for(
+        self, dest: tuple[int, int]
+    ) -> Optional[tuple[dict, list[tuple[int, int]]]]:
+        """Find the best docked drone that can safely round-trip to `dest`.
+
+        Candidates must be docked with an available battery state AND have
+        enough runway (round-trip cells × NAV_TICK_MS) to reach the
+        destination and return, with BATTERY_SAFETY_MARGIN headroom.
+        """
         with self._lock:
             candidates = [
                 d for d in self.drones.values()
-                if d["status"] == "docked" and d["battery_state"] in ("high", "low")
+                if d["status"] == "docked" and d["battery_state"] in self._AVAILABLE_BATTERY
             ]
         if not candidates:
             return None
-        # High battery first, then nearest to hangar corner (stable choice).
-        candidates.sort(key=lambda d: (d["battery_state"] != "high", d["x"] + d["y"]))
-        return candidates[0]
+
+        scored: list[tuple[int, dict, list[tuple[int, int]]]] = []
+        for drone in candidates:
+            path = astar(self.grid, (drone["x"], drone["y"]), dest)
+            if path is None:
+                continue
+            # Round-trip cell count: outbound + return along the same path,
+            # minus the starting cell (already there).
+            round_trip_cells = 2 * max(0, len(path) - 1)
+            flight_ms = round_trip_cells * NAV_TICK_MS
+            runway_ms = self._BATTERY_RUNWAY_MS.get(drone["battery_state"], 0)
+            if flight_ms > runway_ms * BATTERY_SAFETY_MARGIN:
+                log.info(
+                    "skipping %s for round-trip to %s: %d ms needed, "
+                    "%d ms of runway (margin %.2f)",
+                    drone["id"], dest, flight_ms, runway_ms, BATTERY_SAFETY_MARGIN,
+                )
+                continue
+            scored.append((len(path), drone, path))
+
+        if not scored:
+            return None
+
+        # Prefer shortest path, tie-break by highest charge.
+        scored.sort(key=lambda row: (
+            row[0],
+            self._BATTERY_PRIORITY.get(row[1]["battery_state"], 99),
+        ))
+        _, drone, path = scored[0]
+        return drone, path
 
     def _get_drone(self, drone_id: str) -> dict:
         drone = self.drones.get(drone_id)
@@ -240,6 +318,11 @@ class FleetManager:
             {"drone_id": drone["id"], "status": status, "message": payload.get("message", "")},
         )
         self._broadcast("drone_updated", dict(drone))
+        # A drone announcing it's docked should plug in to charge. Sending on
+        # every docked status is idempotent: the battery STM ignores `charge`
+        # from already-charging states.
+        if status == "docked":
+            self.bridge.send_command(drone["id"], "charge")
 
     def _handle_telemetry(self, drone: dict, payload: dict) -> None:
         x = payload.get("x")
@@ -253,15 +336,43 @@ class FleetManager:
                 {"drone_id": drone["id"], "x": x, "y": y, "heading": payload.get("heading", 0)},
             )
 
+    # Drone statuses that mean "airborne" — used to detect mid-flight empties.
+    _IN_FLIGHT_STATUSES = {
+        "flight started", "returning", "delivered, returning",
+        "cancel, returning", "timed out, returning",
+        "arrived, unloading medicine",
+    }
+
     def _handle_battery(self, drone: dict, payload: dict) -> None:
         state = payload.get("state", "")
-        if state:
-            drone["battery_state"] = state
+        if not state:
+            return
+        drone["battery_state"] = state
+        self.db.upsert_drone(drone)
+        self._broadcast(
+            "drone_battery",
+            {"drone_id": drone["id"], "state": state},
+        )
+        self._broadcast("drone_updated", dict(drone))
+
+        # Mid-flight empty = simulated emergency landing. The drone has
+        # already aborted its own navigation; mark the order failed and
+        # the drone unavailable so the fleet manager stops dispatching it.
+        if state == "empty" and drone["status"] in self._IN_FLIGHT_STATUSES:
+            log.warning("[%s] went empty mid-flight — emergency landed", drone["id"])
+            drone["status"] = "emergency_landed_empty"
             self.db.upsert_drone(drone)
-            self._broadcast(
-                "drone_battery",
-                {"drone_id": drone["id"], "state": state},
-            )
+            order_id = drone.get("order_id")
+            if order_id:
+                order = self.orders.get(order_id)
+                if order and order.get("status") not in ("cancelled", "completed"):
+                    self.db.update_order(order_id, status="failed")
+                    order["status"] = "failed"
+                    self._broadcast(
+                        "order_failed",
+                        {"order_id": order_id,
+                         "reason": f"{drone['id']} battery empty mid-flight"},
+                    )
             self._broadcast("drone_updated", dict(drone))
 
     def _handle_event(self, drone: dict, payload: dict) -> None:

@@ -1,127 +1,33 @@
-timestamp,event_type,drone_id,drone_name,command,status,location,battery,raw_payload
-2026-04-23 10:21:26,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,
-2026-04-23 10:21:30,command,drone-01,Drone 01,medicine_loaded,idle,Hangar A,92%,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 10:21:34,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,
-2026-04-23 10:21:35,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,
-2026-04-23 10:23:15,deselect,,,back,,,,
-2026-04-23 10:23:18,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,
-2026-04-23 10:23:20,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,
-2026-04-23 10:23:21,command,drone-01,Drone 01,medicine_loaded,idle,Hangar A,92%,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 10:30:51,app_start,,,,started,,,,
-2026-04-23 10:30:51,broker_connect,,,,Success,,,,
-2026-04-23 10:30:59,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:00,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:02,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:31:02,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:31:03,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:31:03,mqtt_in,drone-03,Drone 03,select_drone,returning,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:31:04,select,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:31:04,mqtt_in,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:31:05,select,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:31:05,mqtt_in,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:31:08,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:08,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:10,command,drone-01,Drone 01,medicine_loaded,loaded,Hangar A,92%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:10,mqtt_in,drone-01,Drone 01,medicine_loaded,loaded,Hangar A,92%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:12,select,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:31:12,mqtt_in,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:31:16,select,drone-01,Drone 01,select_drone,loaded,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:31:16,mqtt_in,drone-01,Drone 01,select_drone,loaded,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:32:58,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:32:58,mqtt_in,drone-03,Drone 03,select_drone,returning,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:32:59,command,drone-03,Drone 03,medicine_loaded,loaded,In transit,45%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-03""}"
-2026-04-23 10:32:59,mqtt_in,drone-03,Drone 03,medicine_loaded,loaded,In transit,45%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-03""}"
-2026-04-23 10:33:03,select,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:03,mqtt_in,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:05,command,drone-04,Drone 04,medicine_loaded,loaded,Hangar B,100%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:05,mqtt_in,drone-04,Drone 04,medicine_loaded,loaded,Hangar B,100%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:06,select,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:06,mqtt_in,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:07,command,drone-05,Drone 05,medicine_loaded,loaded,Charging bay,61%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:07,mqtt_in,drone-05,Drone 05,medicine_loaded,loaded,Charging bay,61%,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:11,select,drone-01,Drone 01,select_drone,loaded,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:33:11,mqtt_in,drone-01,Drone 01,select_drone,loaded,Hangar A,92%,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:33:12,command,drone-01,Drone 01,return,returning,Hangar A,92%,,"{""command"": ""return"", ""drone"": ""drone-01""}"
-2026-04-23 10:33:12,mqtt_in,drone-01,Drone 01,return,returning,Hangar A,92%,,"{""command"": ""return"", ""drone"": ""drone-01""}"
-2026-04-23 10:33:13,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:33:13,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:33:14,command,drone-02,Drone 02,return,returning,Ward 3,78%,,"{""command"": ""return"", ""drone"": ""drone-02""}"
-2026-04-23 10:33:14,mqtt_in,drone-02,Drone 02,return,returning,Ward 3,78%,,"{""command"": ""return"", ""drone"": ""drone-02""}"
-2026-04-23 10:33:15,select,drone-03,Drone 03,select_drone,loaded,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:33:15,mqtt_in,drone-03,Drone 03,select_drone,loaded,In transit,45%,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:33:16,command,drone-03,Drone 03,return,returning,In transit,45%,,"{""command"": ""return"", ""drone"": ""drone-03""}"
-2026-04-23 10:33:16,mqtt_in,drone-03,Drone 03,return,returning,In transit,45%,,"{""command"": ""return"", ""drone"": ""drone-03""}"
-2026-04-23 10:33:17,select,drone-04,Drone 04,select_drone,loaded,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:17,mqtt_in,drone-04,Drone 04,select_drone,loaded,Hangar B,100%,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:18,command,drone-04,Drone 04,return,returning,Hangar B,100%,,"{""command"": ""return"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:18,mqtt_in,drone-04,Drone 04,return,returning,Hangar B,100%,,"{""command"": ""return"", ""drone"": ""drone-04""}"
-2026-04-23 10:33:19,select,drone-05,Drone 05,select_drone,loaded,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:20,mqtt_in,drone-05,Drone 05,select_drone,loaded,Charging bay,61%,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:21,command,drone-05,Drone 05,return,returning,Charging bay,61%,,"{""command"": ""return"", ""drone"": ""drone-05""}"
-2026-04-23 10:33:21,mqtt_in,drone-05,Drone 05,return,returning,Charging bay,61%,,"{""command"": ""return"", ""drone"": ""drone-05""}"
-2026-04-23 10:38:28,app_start,,,,started,,,,,
-2026-04-23 10:38:28,broker_connect,,,,Success,,,,,
-2026-04-23 10:38:30,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:38:30,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:42:24,app_start,,,,started,,,,,
-2026-04-23 10:42:24,broker_connect,,,,Success,,,,,
-2026-04-23 10:42:35,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:42:35,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:42:39,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:42:39,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:42:40,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:42:40,mqtt_in,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 10:42:41,select,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:42:41,mqtt_in,drone-04,Drone 04,select_drone,idle,Hangar B,100%,,,"{""command"": ""select_drone"", ""drone"": ""drone-04""}"
-2026-04-23 10:42:41,select,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:42:42,mqtt_in,drone-05,Drone 05,select_drone,idle,Charging bay,61%,,,"{""command"": ""select_drone"", ""drone"": ""drone-05""}"
-2026-04-23 10:48:35,mqtt_in,,,,initiated,,,,System is initiated.,"{""status"": ""initiated"", ""message"": ""System is initiated.""}"
-2026-04-23 10:48:51,app_start,,,,started,,,,,
-2026-04-23 10:48:51,broker_connect,,,,Success,,,,,
-2026-04-23 10:48:54,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:48:54,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:48:54,mqtt_in,drone-01,Drone 01,,selected_drone,Hangar A,92%,,Drone drone-01 selected.,"{""status"": ""selected_drone"", ""drone"": ""drone-01"", ""message"": ""Drone drone-01 selected.""}"
-2026-04-23 10:50:25,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:50:25,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:50:42,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:50:42,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:52:30,app_start,,,,started,,,,,
-2026-04-23 10:52:30,broker_connect,,,,Success,,,,,
-2026-04-23 10:52:50,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:52:50,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 10:52:52,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 10:52:52,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 11:02:25,app_start,,,,started,,,,,
-2026-04-23 11:02:25,broker_connect,,,,Success,,,,,
-2026-04-23 11:02:46,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:02:46,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:02:46,mqtt_in,drone-01,Drone 01,,selected_drone,Hangar A,92%,,Drone drone-01 selected.,"{""status"": ""selected_drone"", ""drone"": ""drone-01"", ""message"": ""Drone drone-01 selected.""}"
-2026-04-23 11:02:47,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 11:02:47,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 11:02:48,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:02:48,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:47,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:47,mqtt_in,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:48,command,drone-01,Drone 01,medicine_loaded,loaded,Hangar A,92%,,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:48,mqtt_in,drone-01,Drone 01,medicine_loaded,loaded,Hangar A,92%,,,"{""command"": ""medicine_loaded"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:48,mqtt_in,drone-01,Drone 01,,loaded,Hangar A,92%,,Medicine loaded on drone drone-01.,"{""status"": ""loaded"", ""drone"": ""drone-01"", ""message"": ""Medicine loaded on drone drone-01.""}"
-2026-04-23 11:07:49,mqtt_in,drone-01,Drone 01,,loaded,Hangar A,92%,,Medicine loaded on drone drone-01.,"{""status"": ""loaded"", ""drone"": ""drone-01"", ""message"": ""Medicine loaded on drone drone-01.""}"
-2026-04-23 11:07:52,command,drone-01,Drone 01,return,returning,Hangar A,92%,,,"{""command"": ""return"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:52,mqtt_in,drone-01,Drone 01,return,returning,Hangar A,92%,,,"{""command"": ""return"", ""drone"": ""drone-01""}"
-2026-04-23 11:07:52,mqtt_in,drone-01,Drone 01,,returning,Hangar A,92%,,Drone drone-01 is returning.,"{""status"": ""returning"", ""drone"": ""drone-01"", ""message"": ""Drone drone-01 is returning.""}"
-2026-04-23 11:07:52,mqtt_in,drone-01,Drone 01,,returning,Hangar A,92%,,Drone drone-01 is returning.,"{""status"": ""returning"", ""drone"": ""drone-01"", ""message"": ""Drone drone-01 is returning.""}"
-2026-04-23 11:08:23,select,drone-01,Drone 01,select_drone,returning,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:08:23,mqtt_in,drone-01,Drone 01,select_drone,returning,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:08:25,select,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 11:08:25,mqtt_in,drone-02,Drone 02,select_drone,loaded,Ward 3,78%,,,"{""command"": ""select_drone"", ""drone"": ""drone-02""}"
-2026-04-23 11:09:22,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 11:09:22,mqtt_in,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 11:09:23,select,drone-01,Drone 01,select_drone,returning,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:09:23,mqtt_in,drone-01,Drone 01,select_drone,returning,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:13:07,app_start,,,,started,,,,,
-2026-04-23 11:13:07,broker_connect,,,,Success,,,,,
-2026-04-23 11:13:58,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
-2026-04-23 11:14:00,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
-2026-04-23 11:21:35,mqtt_in,drone-02,Drone 02,,returning,Ward 3,78%,,Drone drone-02 is returning.,"{""status"": ""returning"", ""drone"": ""drone-02"", ""message"": ""Drone drone-02 is returning.""}"
-2026-04-23 11:21:35,mqtt_in,drone-02,Drone 02,,returning,Ward 3,78%,,Drone drone-02 is returning.,"{""status"": ""returning"", ""drone"": ""drone-02"", ""message"": ""Drone drone-02 is returning.""}"
-2026-04-23 11:21:36,broker_connect,,,,Success,,,,,
+timestamp,event_type,drone_id,drone_name,command,status,location,battery,medicine,message,raw_payload
+2026-04-23 12:47:35,app_start,,,,started,,,,,
+2026-04-23 12:48:25,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:26,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:48:26,select,drone-03,Drone 03,select_drone,docked,"(10, 5)",high_charging,,,
+2026-04-23 12:48:27,select,drone-04,Drone 04,select_drone,docked,"(10, 10)",high_charging,,,
+2026-04-23 12:48:28,select,drone-05,Drone 05,select_drone,docked,"(15, 5)",high_charging,,,
+2026-04-23 12:48:29,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:33,order_created,,,order_created,pending,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""pending"", ""drone_id"": null, ""route"": null}"
+2026-04-23 12:48:33,order_assigned,,,order_assigned,assigned,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""assigned"", ""drone_id"": ""drone-01"", ""route"": [[5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [15, 5], [16, 5], [17, 5], [18, 5], [19, 5], [20, 5], [21, 5], [22, 5], [23, 5], [24, 5], [25, 5], [26, 5], [27, 5], [28, 5], [29, 5], [30, 5], [31, 5], [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5], [40, 5], [41, 5], [42, 5], [43, 5], [44, 5], [45, 5], [46, 5], [47, 5], [48, 5], [49, 5], [50, 5], [51, 5], [52, 5], [53, 5], [53, 6], [53, 7], [53, 8], [53, 9], [53, 10], [53, 11], [53, 12], [53, 13], [53, 14], [53, 15], [53, 16], [53, 17], [53, 18], [53, 19], [53, 20], [53, 21], [53, 22], [53, 23], [53, 24], [53, 25], [53, 26], [53, 27], [53, 28], [53, 29], [53, 30], [53, 31], [53, 32], [53, 33], [53, 34], [53, 35], [53, 36], [54, 36], [54, 37], [54, 38], [54, 39], [55, 39], [55, 40], [56, 40], [57, 40], [57, 41], [58, 41], [59, 41], [59, 42], [60, 42], [61, 42], [62, 42], [62, 43], [63, 43], [64, 43], [64, 44], [64, 45], [64, 46], [64, 47], [64, 48], [64, 49], [64, 50], [64, 51], [64, 52], [64, 53], [64, 54], [64, 55], [64, 56], [64, 57], [64, 58], [64, 59], [64, 60], [64, 61], [64, 62], [64, 63], [64, 64], [64, 65], [64, 66], [64, 67], [64, 68], [64, 69], [64, 70], [64, 71], [64, 72], [64, 73], [64, 74], [64, 75], [64, 76], [64, 77], [64, 78], [64, 79]]}"
+2026-04-23 12:48:35,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:37,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:37,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:48:39,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:43,command,drone-01,Drone 01,medicine_loaded,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:48:43,order_in_transit,,,order_in_transit,in_transit,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""in_transit"", ""drone_id"": ""drone-01"", ""route"": [[5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [15, 5], [16, 5], [17, 5], [18, 5], [19, 5], [20, 5], [21, 5], [22, 5], [23, 5], [24, 5], [25, 5], [26, 5], [27, 5], [28, 5], [29, 5], [30, 5], [31, 5], [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5], [40, 5], [41, 5], [42, 5], [43, 5], [44, 5], [45, 5], [46, 5], [47, 5], [48, 5], [49, 5], [50, 5], [51, 5], [52, 5], [53, 5], [53, 6], [53, 7], [53, 8], [53, 9], [53, 10], [53, 11], [53, 12], [53, 13], [53, 14], [53, 15], [53, 16], [53, 17], [53, 18], [53, 19], [53, 20], [53, 21], [53, 22], [53, 23], [53, 24], [53, 25], [53, 26], [53, 27], [53, 28], [53, 29], [53, 30], [53, 31], [53, 32], [53, 33], [53, 34], [53, 35], [53, 36], [54, 36], [54, 37], [54, 38], [54, 39], [55, 39], [55, 40], [56, 40], [57, 40], [57, 41], [58, 41], [59, 41], [59, 42], [60, 42], [61, 42], [62, 42], [62, 43], [63, 43], [64, 43], [64, 44], [64, 45], [64, 46], [64, 47], [64, 48], [64, 49], [64, 50], [64, 51], [64, 52], [64, 53], [64, 54], [64, 55], [64, 56], [64, 57], [64, 58], [64, 59], [64, 60], [64, 61], [64, 62], [64, 63], [64, 64], [64, 65], [64, 66], [64, 67], [64, 68], [64, 69], [64, 70], [64, 71], [64, 72], [64, 73], [64, 74], [64, 75], [64, 76], [64, 77], [64, 78], [64, 79]]}"
+2026-04-23 12:48:59,select,drone-05,Drone 05,select_drone,docked,"(15, 5)",high_charging,,,
+2026-04-23 12:49:36,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:49:51,order_arrived,,,order_arrived,arrived,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""arrived"", ""drone_id"": ""drone-01"", ""route"": [[5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [15, 5], [16, 5], [17, 5], [18, 5], [19, 5], [20, 5], [21, 5], [22, 5], [23, 5], [24, 5], [25, 5], [26, 5], [27, 5], [28, 5], [29, 5], [30, 5], [31, 5], [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5], [40, 5], [41, 5], [42, 5], [43, 5], [44, 5], [45, 5], [46, 5], [47, 5], [48, 5], [49, 5], [50, 5], [51, 5], [52, 5], [53, 5], [53, 6], [53, 7], [53, 8], [53, 9], [53, 10], [53, 11], [53, 12], [53, 13], [53, 14], [53, 15], [53, 16], [53, 17], [53, 18], [53, 19], [53, 20], [53, 21], [53, 22], [53, 23], [53, 24], [53, 25], [53, 26], [53, 27], [53, 28], [53, 29], [53, 30], [53, 31], [53, 32], [53, 33], [53, 34], [53, 35], [53, 36], [54, 36], [54, 37], [54, 38], [54, 39], [55, 39], [55, 40], [56, 40], [57, 40], [57, 41], [58, 41], [59, 41], [59, 42], [60, 42], [61, 42], [62, 42], [62, 43], [63, 43], [64, 43], [64, 44], [64, 45], [64, 46], [64, 47], [64, 48], [64, 49], [64, 50], [64, 51], [64, 52], [64, 53], [64, 54], [64, 55], [64, 56], [64, 57], [64, 58], [64, 59], [64, 60], [64, 61], [64, 62], [64, 63], [64, 64], [64, 65], [64, 66], [64, 67], [64, 68], [64, 69], [64, 70], [64, 71], [64, 72], [64, 73], [64, 74], [64, 75], [64, 76], [64, 77], [64, 78], [64, 79]]}"
+2026-04-23 12:49:57,order_delivered,,,order_delivered,delivered,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""delivered"", ""drone_id"": ""drone-01"", ""route"": [[5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [15, 5], [16, 5], [17, 5], [18, 5], [19, 5], [20, 5], [21, 5], [22, 5], [23, 5], [24, 5], [25, 5], [26, 5], [27, 5], [28, 5], [29, 5], [30, 5], [31, 5], [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5], [40, 5], [41, 5], [42, 5], [43, 5], [44, 5], [45, 5], [46, 5], [47, 5], [48, 5], [49, 5], [50, 5], [51, 5], [52, 5], [53, 5], [53, 6], [53, 7], [53, 8], [53, 9], [53, 10], [53, 11], [53, 12], [53, 13], [53, 14], [53, 15], [53, 16], [53, 17], [53, 18], [53, 19], [53, 20], [53, 21], [53, 22], [53, 23], [53, 24], [53, 25], [53, 26], [53, 27], [53, 28], [53, 29], [53, 30], [53, 31], [53, 32], [53, 33], [53, 34], [53, 35], [53, 36], [54, 36], [54, 37], [54, 38], [54, 39], [55, 39], [55, 40], [56, 40], [57, 40], [57, 41], [58, 41], [59, 41], [59, 42], [60, 42], [61, 42], [62, 42], [62, 43], [63, 43], [64, 43], [64, 44], [64, 45], [64, 46], [64, 47], [64, 48], [64, 49], [64, 50], [64, 51], [64, 52], [64, 53], [64, 54], [64, 55], [64, 56], [64, 57], [64, 58], [64, 59], [64, 60], [64, 61], [64, 62], [64, 63], [64, 64], [64, 65], [64, 66], [64, 67], [64, 68], [64, 69], [64, 70], [64, 71], [64, 72], [64, 73], [64, 74], [64, 75], [64, 76], [64, 77], [64, 78], [64, 79]]}"
+2026-04-23 12:50:06,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:51:05,order_completed,,,order_completed,completed,,,,,"{""id"": 1, ""user_name"": ""Oi"", ""medicine"": ""cocaine"", ""dest_x"": 64, ""dest_y"": 79, ""status"": ""completed"", ""drone_id"": ""drone-01"", ""route"": [[5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [15, 5], [16, 5], [17, 5], [18, 5], [19, 5], [20, 5], [21, 5], [22, 5], [23, 5], [24, 5], [25, 5], [26, 5], [27, 5], [28, 5], [29, 5], [30, 5], [31, 5], [32, 5], [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5], [40, 5], [41, 5], [42, 5], [43, 5], [44, 5], [45, 5], [46, 5], [47, 5], [48, 5], [49, 5], [50, 5], [51, 5], [52, 5], [53, 5], [53, 6], [53, 7], [53, 8], [53, 9], [53, 10], [53, 11], [53, 12], [53, 13], [53, 14], [53, 15], [53, 16], [53, 17], [53, 18], [53, 19], [53, 20], [53, 21], [53, 22], [53, 23], [53, 24], [53, 25], [53, 26], [53, 27], [53, 28], [53, 29], [53, 30], [53, 31], [53, 32], [53, 33], [53, 34], [53, 35], [53, 36], [54, 36], [54, 37], [54, 38], [54, 39], [55, 39], [55, 40], [56, 40], [57, 40], [57, 41], [58, 41], [59, 41], [59, 42], [60, 42], [61, 42], [62, 42], [62, 43], [63, 43], [64, 43], [64, 44], [64, 45], [64, 46], [64, 47], [64, 48], [64, 49], [64, 50], [64, 51], [64, 52], [64, 53], [64, 54], [64, 55], [64, 56], [64, 57], [64, 58], [64, 59], [64, 60], [64, 61], [64, 62], [64, 63], [64, 64], [64, 65], [64, 66], [64, 67], [64, 68], [64, 69], [64, 70], [64, 71], [64, 72], [64, 73], [64, 74], [64, 75], [64, 76], [64, 77], [64, 78], [64, 79]]}"
+2026-04-23 12:51:13,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:51:14,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:51:15,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:51:15,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:51:17,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:51:18,select,drone-03,Drone 03,select_drone,docked,"(10, 5)",high_charging,,,
+2026-04-23 12:51:18,select,drone-05,Drone 05,select_drone,docked,"(15, 5)",high_charging,,,
+2026-04-23 12:51:19,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,
+2026-04-23 12:52:21,select,drone-02,Drone 02,select_drone,docked,"(5, 10)",high_charging,,,
+2026-04-23 12:52:22,select,drone-03,Drone 03,select_drone,docked,"(10, 5)",high_charging,,,
+2026-04-23 12:52:23,select,drone-01,Drone 01,select_drone,docked,"(5, 5)",high_charging,,,

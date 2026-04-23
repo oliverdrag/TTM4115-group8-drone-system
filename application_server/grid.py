@@ -57,9 +57,9 @@ class Grid:
 def generate_zones(
     width: int,
     height: int,
-    num_zones: int = 6,
-    min_size: int = 250,
-    max_size: int = 900,
+    num_zones: int = 5,
+    min_size: int = 40,
+    max_size: int = 140,
     reserved: list[tuple[int, int]] | None = None,
     seed: int | None = None,
 ) -> list[dict]:
@@ -82,15 +82,19 @@ def generate_zones(
     ]
     rng.shuffle(zone_names)
 
+    # Keep seeds away from the edge and from the hangar corner.
+    edge_pad = max(5, min(width, height) // 10)
+    hangar_clearance = max(5, min(width, height) // 8)
+
     for i in range(num_zones):
-        for _attempt in range(50):
-            sx = rng.randint(10, width - 11)
-            sy = rng.randint(10, height - 11)
+        for _attempt in range(60):
+            sx = rng.randint(edge_pad, width - edge_pad - 1)
+            sy = rng.randint(edge_pad, height - edge_pad - 1)
             if (sx, sy) in taken:
                 continue
             # Keep a safe corridor clear so drones can always leave the hangar.
             if any(
-                abs(sx - rx) + abs(sy - ry) < 8 for rx, ry in reserved_set
+                abs(sx - rx) + abs(sy - ry) < hangar_clearance for rx, ry in reserved_set
             ):
                 continue
             break

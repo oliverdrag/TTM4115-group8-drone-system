@@ -1,3 +1,8 @@
 stmpy
 paho-mqtt
 Pillow
+Flask
+flask-cors
+flask-sock
+requests
+websocket-client

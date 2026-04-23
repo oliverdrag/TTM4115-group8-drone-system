@@ -1,323 +1,426 @@
-import json
+"""Bruker frontend — tkinter GUI som  snakker med applikasjons serveren via REST.
+
+Appen følger Bruker Frontend tilstandsmaskina i  speksen
+(Idle → Enter-Info → Drone-leverer), men effektne fyrer nå ekte HTTP
+kall istedetfor mockede varslinger.
+
+Destinasjonen er en tilfeldi  ledig celle på 80x80 gridet; gridet er
+hentet fra servern ved oppstart så vi vet hvilke cellr som er  restrikterte.
+"""
+
+import logging
 import os
+import random
+import threading
 import tkinter as tk
-from stmpy import Machine, Driver
-import paho.mqtt.client as mqtt
-from PIL import Image, ImageTk
+from typing import Optional
 
-broker, port = "mqtt20.iik.ntnu.no", 1883
+import requests
+from stmpy import Driver, Machine
 
-# ---- MQTT TOPICS ----
-MQTT_TOPIC_CONTROL = "ttm4115/group8/user/control"
-MQTT_TOPIC_DISPLAY = "ttm4115/group8/user/display"
+import ui_theme as theme
 
 
-# ---- USER MQTT CLIENT ----
-class UserMQTTClient:
+log = logging.getLogger("user_app")
 
-    def __init__(self, frontend):
-        self.frontend = frontend
-        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
+APP_SERVER_URL = os.environ.get("APP_SERVER_URL", "http://localhost:5000")
+POLL_INTERVAL_MS = 1500
 
-    def on_connect(self, client, userdata, flags, reason_code, properties):
-        print("Connected to MQTT broker with reason code {}".format(reason_code))
-        client.subscribe(MQTT_TOPIC_DISPLAY)
 
-    def on_message(self, client, userdata, msg):
-        print("on_message(): topic: {} payload: {}".format(msg.topic, msg.payload.decode("utf-8")))
-
-        if msg.topic != MQTT_TOPIC_DISPLAY:
-            return
-
-        try:
-            payload = json.loads(msg.payload.decode("utf-8"))
-        except json.JSONDecodeError:
-            payload = {"display": msg.payload.decode("utf-8")}
-
-        command = payload.get("command", "").strip().lower()
-        if command == "cancelled_by_system":
-            self.frontend.on_cancelled_by_system()
-            return
-
-        status = payload.get("display", payload.get("status", ""))
-        if not status:
-            return
-
-        self.frontend.on_downstream_status(status)
-
-    def publish_control(self, command, **payload):
-        message = {"command": command}
-        message.update(payload)
-        self.client.publish(MQTT_TOPIC_CONTROL, json.dumps(message))
-
-    def start(self, broker, port):
-        print("Connecting to {}:{}".format(broker, port))
-        self.client.connect(broker, port)
-        self.client.loop_start()
-        
-
-# ---- USER FRONTEND ----
 class UserFrontend:
 
+    # ---- bilder / hjelpere ----------------------------------------------
     def load_images(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         image_dir = os.path.join(base_dir, "images")
-        self.idle_image = tk.PhotoImage(file=os.path.join(image_dir, "idle_image.png"))
-        delivering_path = os.path.join(image_dir, "delivering_image.jpg")
-        delivering_img = Image.open(delivering_path)
-        delivering_img = delivering_img.resize((240, 180), Image.LANCZOS)
-        self.delivering_image = ImageTk.PhotoImage(delivering_img)
+        try:
+            self.idle_image = tk.PhotoImage(file=os.path.join(image_dir, "idle_image.png"))
+        except Exception:
+            self.idle_image = None
+        try:
+            self.delivering_image = tk.PhotoImage(file=os.path.join(image_dir, "delivering_image.png"))
+        except Exception:
+            self.delivering_image = None
 
-    def set_status(self, status):
+    def set_status(self, status: str) -> None:
         self.status_text.set(status)
 
-    def show_frame_with_clear(self, frame_name, clear=False):
+    def show_frame_with_clear(self, frame_name: str, clear: bool = False) -> None:
         if clear:
             self.clear_form()
         self.show_frame(frame_name)
-    
-    # ---- UI EVENT HANDLERS ----
+
+    # ---- knappe handlere ------------------------------------------------
     def on_button_cancel(self):
-        self.stm.send('cancel')
-    
+        self.stm.send("cancel")
+
     def on_button_order_drone(self):
-        self.stm.send('order_drone')
-        
+        self.stm.send("order_drone")
+
     def on_button_send_info(self):
-        self.stm.send('send_info_clicked')
-        
-    def on_button_refresh(self):
-        self.stm.send('refresh')
-    
-    def on_button_medicine_received(self):
-        self.stm.send('medicine_received')
-
-    def on_cancelled_by_system(self):
-        if self.current_state == 'drone_delivering':
-            self.stm.send('cancelled_by_system')
-
-    def on_downstream_status(self, status):
-        self.store_display_status(status)
-        if self.current_state == 'drone_delivering':
-            self.stm.send('refresh')
-        
-    def on_button_exit(self):
-        self.is_shutting_down = True
-        if self.mqtt_client is not None:
-            self.mqtt_client.client.loop_stop()
-            self.mqtt_client.client.disconnect()
-        if self.stm is not None and getattr(self.stm, "_driver", None) is not None:
-            self.stm.driver.stop()
-        self.root.quit()
-        self.root.destroy()
-
-    # ---- UI HELPERS AND LAYOUT ----
-    def validate_order_form(self):
-        return all((self.entry_name.get().strip(), self.entry_location.get().strip(), self.entry_medicine.get().strip()))
-
-    def clear_form(self):
-        for entry in (self.entry_name, self.entry_location, self.entry_medicine):
-            entry.delete(0, tk.END)
-
-    def show_frame(self, frame_name):
-        for frame in self.frames.values():
-            frame.pack_forget()
-        self.frames[frame_name].pack(fill=tk.BOTH, expand=True, pady=10)
-
-    def configure_window(self):
-        self.root.title("User Frontend")
-        self.root.geometry("380x440")
-        self.root.resizable(False, False)
-        self.root.protocol("WM_DELETE_WINDOW", self.on_button_exit)
-
-    def build_status_area(self):
-        self.status_text = tk.StringVar(value="Idle")
-        self.status_label = tk.Label(self.root, textvariable=self.status_text, fg="#2b2b2b")
-        self.status_label.pack(pady=(8, 4))
-
-    def build_start_view(self):
-        tk.Label(self.start_frame, image=self.idle_image).pack(pady=8)
-        self.button_order_drone = tk.Button(self.start_frame, text="Order Drone", width=18, command=self.on_button_order_drone)
-        self.button_order_drone.pack(pady=4)
-        self.button_exit_idle = tk.Button(self.start_frame, text="Exit", width=18, command=self.on_button_exit)
-        self.button_exit_idle.pack(pady=4)
-
-    def build_labeled_entry(self, label):
-        tk.Label(self.info_frame, text=label).pack(anchor="w", padx=40)
-        entry = tk.Entry(self.info_frame, width=32)
-        entry.pack(padx=40, pady=(0, 8))
-        return entry
-
-    def build_enter_info_view(self):
-        self.entry_name = self.build_labeled_entry("Name")
-        self.entry_location = self.build_labeled_entry("Location")
-        self.entry_medicine = self.build_labeled_entry("Medicine")
-        self.entry_medicine.pack_configure(pady=(0, 10))
-
-        info_buttons = tk.Frame(self.info_frame)
-        info_buttons.pack(pady=4)
-        self.button_send_info = tk.Button(info_buttons, text="Send Info", width=12, command=self.on_button_send_info)
-        self.button_send_info.pack(side=tk.LEFT, padx=4)
-        self.button_cancel = tk.Button(info_buttons, text="Cancel", width=12, command=self.on_button_cancel)
-        self.button_cancel.pack(side=tk.LEFT, padx=4)
-        self.button_exit_info = tk.Button(self.info_frame, text="Exit", width=26, command=self.on_button_exit)
-        self.button_exit_info.pack(pady=6)
-
-    def build_delivery_view(self):
-        tk.Label(self.delivery_frame, image=self.delivering_image).pack(pady=8)
-        actions = [
-            ("Refresh", self.on_button_refresh, "button_refresh"),
-            ("Medicine Received", self.on_button_medicine_received, "button_medicine_received"),
-            ("Cancel", self.on_button_cancel, "button_cancel_delivery"),
-            ("Exit", self.on_button_exit, "button_exit_delivery"),
-        ]
-        for text, callback, attr in actions:
-            button = tk.Button(self.delivery_frame, text=text, width=18, command=callback)
-            button.pack(pady=4)
-            setattr(self, attr, button)
-
-    def build_views(self):
-        self.start_frame = tk.Frame(self.root)
-        self.info_frame = tk.Frame(self.root)
-        self.delivery_frame = tk.Frame(self.root)
-        self.frames = {
-            "idle": self.start_frame,
-            "enter_info": self.info_frame,
-            "drone_delivering": self.delivery_frame,
-        }
-
-        self.build_start_view()
-        self.build_enter_info_view()
-        self.build_delivery_view()
-    
-    def display(self):
-        self.configure_window()
-        self.build_status_area()
-        self.build_views()
-
-        self.show_frame("idle")
-        
-    def __init__(self):
-        self.stm = None
-        self.mqtt_client = None
-        self.is_shutting_down = False
-        self.current_state = 'idle'
-        self.current_order = {}
-        self.latest_display_status = "Idle"
-        self.root = tk.Tk()
-        self.load_images()
-        self.display()
-        
-    # ---- STATE ENTRY AND EFFECTS ----
-    def show_idle(self):
-        self.current_state = 'idle'
-        if self.latest_display_status == "delivery cancelled by system":
-            self.set_status("delivery cancelled by system")
-        else:
-            self.set_status("Idle")
-        self.show_frame_with_clear("idle", clear=True)
-
-    def show_enter_info(self):
-        self.current_state = 'enter_info'
-        self.set_status("Enter delivery information")
-        self.show_frame_with_clear("enter_info")
-
-    def show_drone_delivering(self):
-        self.current_state = 'drone_delivering'
-        status_to_show = self.latest_display_status if self.latest_display_status != "Idle" else "Drone is delivering medicine"
-        self.set_status(status_to_show)
-        self.show_frame_with_clear("drone_delivering")
-
-    def prepare_order_from_form(self):
         if not self.validate_order_form():
             self.show_alert("Please fill in Name, Location, and Medicine.")
             return
-
         self.current_order = {
             "name": self.entry_name.get().strip(),
             "location": self.entry_location.get().strip(),
             "medicine": self.entry_medicine.get().strip(),
         }
-        self.stm.send('send_info')
+        self.stm.send("send_info")
 
-    def request_drone(self):
-        if self.mqtt_client is not None:
-            self.mqtt_client.publish_control(
-                "new_order",
-                name=self.current_order.get("name", ""),
-                location=self.current_order.get("location", ""),
-                medicine=self.current_order.get("medicine", ""),
+    def on_button_refresh(self):
+        self._refresh_order_status()
+
+    def on_button_medicine_received(self):
+        self.stm.send("medicine_received")
+
+    def on_button_exit(self):
+        self.is_shutting_down = True
+        if self.stm is not None and self.stm.driver is not None:
+            self.stm.driver.stop()
+        self.root.quit()
+        self.root.destroy()
+
+    def validate_order_form(self):
+        return all(
+            (
+                self.entry_name.get().strip(),
+                self.entry_location.get().strip(),
+                self.entry_medicine.get().strip(),
             )
-        self.show_alert(
-            f"Request sent for {self.current_order.get('name', 'user')} "
-            f"to {self.current_order.get('location', 'location')} "
-            f"({self.current_order.get('medicine', 'medicine')})."
         )
 
-    def transmit_to_drone(self, message):
-        if self.mqtt_client is not None:
-            self.mqtt_client.publish_control(message)
+    def clear_form(self):
+        for entry in (self.entry_name, self.entry_location, self.entry_medicine):
+            entry.delete(0, tk.END)
 
-    def store_display_status(self, status):
-        self.latest_display_status = status
+    def show_frame(self, frame_name: str) -> None:
+        for frame in self.frames.values():
+            frame.pack_forget()
+        self.frames[frame_name].pack(fill="both", expand=True, padx=18, pady=14)
 
-    def handle_refresh_event(self):
-        if "cancel" in self.latest_display_status.lower():
-            self.stm.send('cancel')
+    # ---- UI konstruksjon -----------------------------------------------
+    def configure_window(self):
+        theme.apply_window(self.root, "Drone Delivery — User", 440, 520)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_button_exit)
+
+    def build_header(self):
+        self.subtitle_var = tk.StringVar(value="")
+        theme.header_bar(self.root, "Drone Delivery", subtitle_var=self.subtitle_var)
+        strip = tk.Frame(self.root, bg=theme.BG_SUBTLE)
+        strip.pack(fill="x")
+        self.status_text = tk.StringVar(value="Idle")
+        theme.status_pill(strip, self.status_text).pack(side="left", padx=18, pady=6)
+        self.coord_text = tk.StringVar(value="")
+        tk.Label(strip, textvariable=self.coord_text, bg=theme.BG_SUBTLE,
+                 fg=theme.FG_MUTED, font=theme.FONT_MONO).pack(side="right", padx=18)
+
+    def _image_panel(self, parent: tk.Misc, image: Optional[tk.PhotoImage]) -> tk.Frame:
+        panel = tk.Frame(parent, bg=theme.BG_PANEL)
+        if image is not None:
+            tk.Label(panel, image=image, bg=theme.BG_PANEL).pack(pady=(18, 10))
+        return panel
+
+    def build_start_view(self):
+        self.start_frame.configure(bg=theme.BG)
+        card = tk.Frame(self.start_frame, bg=theme.BG_PANEL,
+                        highlightthickness=1, highlightbackground=theme.BORDER)
+        card.pack(fill="both", expand=True)
+        self._image_panel(card, self.idle_image).pack(fill="x")
+        tk.Label(card, text="Need medicine delivered?",
+                 bg=theme.BG_PANEL, fg=theme.FG,
+                 font=theme.FONT_HEADER).pack(pady=(4, 2))
+        tk.Label(card, text="Request a drone and we'll dispatch the closest one.",
+                 bg=theme.BG_PANEL, fg=theme.FG_MUTED,
+                 font=theme.FONT_BODY).pack(pady=(0, 14))
+        theme.primary_button(card, "Order Drone",
+                             self.on_button_order_drone, width=18).pack(pady=4)
+        theme.neutral_button(card, "Exit",
+                             self.on_button_exit, width=18).pack(pady=(4, 18))
+
+    def _build_labeled_entry(self, parent: tk.Misc, label: str) -> tk.Entry:
+        tk.Label(parent, text=label, bg=theme.BG_PANEL, fg=theme.FG,
+                 font=theme.FONT_LABEL).pack(anchor="w", padx=24, pady=(10, 2))
+        entry = tk.Entry(parent, width=34, font=theme.FONT_BODY,
+                         relief="flat", bg=theme.BG_SUBTLE,
+                         highlightthickness=1,
+                         highlightbackground=theme.BORDER,
+                         highlightcolor=theme.BTN_PRIMARY_BG)
+        entry.pack(padx=24, pady=(0, 4), ipady=5, fill="x")
+        return entry
+
+    def build_enter_info_view(self):
+        self.info_frame.configure(bg=theme.BG)
+        card = tk.Frame(self.info_frame, bg=theme.BG_PANEL,
+                        highlightthickness=1, highlightbackground=theme.BORDER)
+        card.pack(fill="both", expand=True)
+        tk.Label(card, text="Delivery information",
+                 bg=theme.BG_PANEL, fg=theme.FG,
+                 font=theme.FONT_HEADER).pack(anchor="w", padx=24, pady=(18, 4))
+        self.entry_name     = self._build_labeled_entry(card, "Name")
+        self.entry_location = self._build_labeled_entry(card, "Location (area description)")
+        self.entry_medicine = self._build_labeled_entry(card, "Medicine")
+
+        buttons = tk.Frame(card, bg=theme.BG_PANEL)
+        buttons.pack(pady=(18, 16))
+        theme.primary_button(buttons, "Send Info",
+                             self.on_button_send_info, width=12).pack(side="left", padx=6)
+        theme.neutral_button(buttons, "Cancel",
+                             self.on_button_cancel, width=12).pack(side="left", padx=6)
+
+    def build_delivery_view(self):
+        self.delivery_frame.configure(bg=theme.BG)
+        card = tk.Frame(self.delivery_frame, bg=theme.BG_PANEL,
+                        highlightthickness=1, highlightbackground=theme.BORDER)
+        card.pack(fill="both", expand=True)
+        self._image_panel(card, self.delivering_image).pack(fill="x")
+        tk.Label(card, text="A drone is on the way",
+                 bg=theme.BG_PANEL, fg=theme.FG,
+                 font=theme.FONT_HEADER).pack(pady=(4, 2))
+        tk.Label(card, text="Tap 'Medicine Received' when it arrives.",
+                 bg=theme.BG_PANEL, fg=theme.FG_MUTED,
+                 font=theme.FONT_BODY).pack(pady=(0, 12))
+
+        actions = tk.Frame(card, bg=theme.BG_PANEL)
+        actions.pack(pady=4)
+        theme.success_button(actions, "Medicine Received",
+                             self.on_button_medicine_received, width=16).grid(
+            row=0, column=0, padx=4, pady=4)
+        theme.neutral_button(actions, "Refresh",
+                             self.on_button_refresh, width=16).grid(
+            row=0, column=1, padx=4, pady=4)
+        theme.danger_button(actions, "Cancel",
+                            self.on_button_cancel, width=16).grid(
+            row=1, column=0, padx=4, pady=4)
+        theme.neutral_button(actions, "Exit",
+                             self.on_button_exit, width=16).grid(
+            row=1, column=1, padx=4, pady=(4, 18))
+
+    def build_views(self):
+        body = tk.Frame(self.root, bg=theme.BG)
+        body.pack(fill="both", expand=True)
+        self.start_frame    = tk.Frame(body, bg=theme.BG)
+        self.info_frame     = tk.Frame(body, bg=theme.BG)
+        self.delivery_frame = tk.Frame(body, bg=theme.BG)
+        self.frames = {
+            "idle":             self.start_frame,
+            "enter_info":       self.info_frame,
+            "drone_delivering": self.delivery_frame,
+        }
+        self.build_start_view()
+        self.build_enter_info_view()
+        self.build_delivery_view()
+
+    def display(self):
+        self.configure_window()
+        self.build_header()
+        self.build_views()
+        self.show_frame("idle")
+
+    # ---- tilstand / init --------------------------------------------------
+    def __init__(self):
+        self.stm: Optional[Machine] = None
+        self.is_shutting_down = False
+        self.current_order: dict = {}
+        self.current_order_id: Optional[int] = None
+        self.free_cells: list[tuple[int, int]] = []
+        self.root = tk.Tk()
+        self.load_images()
+        self.display()
+        threading.Thread(target=self._fetch_grid, daemon=True).start()
+
+    # ---- grid / koordinater --------------------------------------------
+    def _fetch_grid(self):
+        try:
+            r = requests.get(f"{APP_SERVER_URL}/api/grid", timeout=5)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            log.warning("could not fetch grid: %s", e)
+            self.root.after(0, lambda: self.show_alert(f"Server unreachable: {e}"))
             return
-        self.refresh_status()
+        width, height = data["width"], data["height"]
+        restricted = set()
+        for zone in data.get("zones", []):
+            for cell in zone.get("cells", []):
+                restricted.add((cell[0], cell[1]))
+        # Unngå øverste-venstre hangar hjørne — droner spawner der. Skaler
+        # sikkerhets margen med gridet så vi fortsat har  ledige celler på en 80x80.
+        margin = max(4, min(width, height) // 5)
+        free = []
+        for y in range(margin, height):
+            for x in range(margin, width):
+                if (x, y) not in restricted:
+                    free.append((x, y))
+        self.free_cells = free
+        log.info("Grid loaded: %dx%d with %d free target cells", width, height, len(free))
 
-    def handle_system_cancel(self):
-        self.store_display_status("delivery cancelled by system")
+    def _pick_random_destination(self) -> tuple[int, int]:
+        if not self.free_cells:
+            # Grid ikkje lasta enda; fall tilbake til en tilfeldi  celle.
+            return (random.randint(50, 75), random.randint(50, 75))
+        return random.choice(self.free_cells)
 
-    def refresh_status(self):
-        self.set_status(self.latest_display_status)
+    # ---- tilstand entry aksjoner -------------------------------------------
+    def show_idle(self):
+        self.set_status("Idle")
+        self.coord_text.set("")
+        self.current_order_id = None
+        self.show_frame_with_clear("idle", clear=True)
 
+    def show_enter_info(self):
+        self.set_status("Enter delivery information")
+        self.show_frame_with_clear("enter_info")
+
+    def show_drone_delivering(self):
+        self.set_status("Drone is on its way")
+        self.show_frame_with_clear("drone_delivering")
+        # Sparkk igang  polling.
+        self.root.after(POLL_INTERVAL_MS, self._refresh_order_status)
+
+    # ---- REST aksjoner --------------------------------------------------
+    def request_drone(self):
+        dest_x, dest_y = self._pick_random_destination()
+        self.coord_text.set(f"Destination: ({dest_x}, {dest_y})")
+        payload = {
+            "user_name": self.current_order.get("name", ""),
+            "medicine": self.current_order.get("medicine", ""),
+            "location": {"x": dest_x, "y": dest_y},
+        }
+        threading.Thread(target=self._post_order, args=(payload,), daemon=True).start()
+
+    def _post_order(self, payload: dict) -> None:
+        try:
+            r = requests.post(f"{APP_SERVER_URL}/api/orders", json=payload, timeout=5)
+        except Exception as e:
+            self.root.after(0, lambda: self._order_failed(f"Network error: {e}"))
+            return
+        if r.status_code == 201:
+            order = r.json()
+            self.current_order_id = order["id"]
+            self.root.after(
+                0,
+                lambda: self.show_alert(
+                    f"Order #{order['id']} assigned to {order.get('drone_id', '?')}"
+                ),
+            )
+        else:
+            err = r.json().get("error") if r.headers.get("content-type", "").startswith("application/json") else r.text
+            self.root.after(0, lambda: self._order_failed(err or "Order failed"))
+
+    def _order_failed(self, message: str):
+        self.show_alert(f"Order failed: {message}")
+        self.stm.send("cancelled_by_system")
+
+    def _refresh_order_status(self):
+        if self.current_order_id is None or self.is_shutting_down:
+            return
+        oid = self.current_order_id
+        threading.Thread(target=self._poll_order, args=(oid,), daemon=True).start()
+
+    def _poll_order(self, order_id: int):
+        try:
+            r = requests.get(f"{APP_SERVER_URL}/api/orders/{order_id}", timeout=3)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            log.warning("poll failed: %s", e)
+            self.root.after(POLL_INTERVAL_MS, self._refresh_order_status)
+            return
+        status = data.get("status", "?")
+        drone_id = data.get("drone_id", "?")
+        self.root.after(0, lambda: self.show_alert(f"Order #{order_id} · {status} · {drone_id}"))
+        if status in ("cancelled", "failed"):
+            self.root.after(0, lambda: self.stm.send("cancelled_by_system"))
+            return
+        if status == "completed":
+            self.root.after(0, lambda: self.stm.send("medicine_received"))
+            return
+        if not self.is_shutting_down:
+            self.root.after(POLL_INTERVAL_MS, self._refresh_order_status)
+
+    def confirm_delivery(self):
+        if self.current_order_id is None:
+            return
+        oid = self.current_order_id
+
+        def do_post():
+            try:
+                requests.post(f"{APP_SERVER_URL}/api/orders/{oid}/complete", timeout=5)
+            except Exception as e:
+                log.warning("confirm failed: %s", e)
+
+        threading.Thread(target=do_post, daemon=True).start()
+
+    def cancel_delivery(self):
+        if self.current_order_id is None:
+            return
+        oid = self.current_order_id
+
+        def do_post():
+            try:
+                requests.post(f"{APP_SERVER_URL}/api/orders/{oid}/cancel", timeout=5)
+            except Exception as e:
+                log.warning("cancel failed: %s", e)
+
+        threading.Thread(target=do_post, daemon=True).start()
+
+    # ---- diverse ---------------------------------------------------------
     def show_alert(self, message):
         self.status_text.set(message)
 
     def run(self):
         self.root.mainloop()
-        
-
-transitions = [
-    {'source': 'initial', 'target': 'idle'},
-    {'trigger': 'order_drone', 'source': 'idle', 'target': 'enter_info', 'effect': 'show_enter_info()'},
-    {'trigger': 'cancel', 'source': 'enter_info', 'target': 'idle'},
-    {'trigger': 'send_info_clicked', 'source': 'enter_info', 'target': 'enter_info', 'effect': 'prepare_order_from_form()'},
-    {'trigger': 'send_info', 'source': 'enter_info', 'target': 'drone_delivering', 'effect': 'request_drone()'},
-    {'trigger': 'refresh', 'source': 'drone_delivering', 'target': 'drone_delivering', 'effect': 'handle_refresh_event()'},
-    {'trigger': 'medicine_received', 'source': 'drone_delivering', 'target': 'idle', 'effect': 'transmit_to_drone("delivery_completed")'},
-    {'trigger': 'cancel', 'source': 'drone_delivering', 'target': 'idle', 'effect': 'transmit_to_drone("cancel")'},
-    {'trigger': 'cancelled_by_system', 'source': 'drone_delivering', 'target': 'idle', 'effect': 'handle_system_cancel()'},
-]
-
-# ---- STATE DECLARATIONS ----
-idle = {'name': 'idle',
-            'entry': 'show_idle'}
-
-enter_info = {'name': 'enter_info',
-    'entry': 'show_enter_info'}
-
-drone_delivering = {'name': 'drone_delivering',
-    'entry': 'show_drone_delivering'}
 
 
-# ---- MQTT DRIVER SETUP ----
+def main():
+    logging.basicConfig(level=logging.INFO)
+    frontend = UserFrontend()
+
+    transitions = [
+        {"source": "initial", "target": "idle"},
+        {"trigger": "order_drone", "source": "idle", "target": "enter_info"},
+        {"trigger": "cancel", "source": "enter_info", "target": "idle"},
+        {
+            "trigger": "send_info",
+            "source": "enter_info",
+            "target": "drone_delivering",
+            "effect": "request_drone",
+        },
+        {"trigger": "refresh", "source": "drone_delivering", "target": "drone_delivering"},
+        {
+            "trigger": "medicine_received",
+            "source": "drone_delivering",
+            "target": "idle",
+            "effect": "confirm_delivery",
+        },
+        {
+            "trigger": "cancel",
+            "source": "drone_delivering",
+            "target": "idle",
+            "effect": "cancel_delivery",
+        },
+        {
+            "trigger": "cancelled_by_system",
+            "source": "drone_delivering",
+            "target": "idle",
+            "effect": 'show_alert("delivery cancelled by system")',
+        },
+    ]
+
+    states = [
+        {"name": "idle", "entry": "show_idle"},
+        {"name": "enter_info", "entry": "show_enter_info"},
+        {"name": "drone_delivering", "entry": "show_drone_delivering"},
+    ]
+
+    stm = Machine(name="stm_frontend", transitions=transitions, states=states, obj=frontend)
+    frontend.stm = stm
+    driver = Driver()
+    driver.add_machine(stm)
+    driver.start()
+    frontend.run()
+
 
 if __name__ == "__main__":
-    frontend = UserFrontend()
-    stm_frontend = Machine(name='stm_frontend', transitions=transitions, states=[idle, enter_info, drone_delivering], obj=frontend)
-    frontend.stm = stm_frontend
-
-    mqtt_driver = Driver()
-    mqtt_driver.add_machine(stm_frontend)
-
-    mqtt_client = UserMQTTClient(frontend)
-    frontend.mqtt_client = mqtt_client
-
-    mqtt_driver.start(keep_active=True)
-    mqtt_client.start(broker, port)
-    frontend.run()
+    main()
