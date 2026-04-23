@@ -3,6 +3,7 @@ import os
 import tkinter as tk
 from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
+from PIL import Image, ImageTk
 
 broker, port = "mqtt20.iik.ntnu.no", 1883
 
@@ -64,7 +65,10 @@ class UserFrontend:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         image_dir = os.path.join(base_dir, "images")
         self.idle_image = tk.PhotoImage(file=os.path.join(image_dir, "idle_image.png"))
-        self.delivering_image = tk.PhotoImage(file=os.path.join(image_dir, "delivering_image.png"))
+        delivering_path = os.path.join(image_dir, "delivering_image.jpg")
+        delivering_img = Image.open(delivering_path)
+        delivering_img = delivering_img.resize((240, 180), Image.LANCZOS)
+        self.delivering_image = ImageTk.PhotoImage(delivering_img)
 
     def set_status(self, status):
         self.status_text.set(status)
