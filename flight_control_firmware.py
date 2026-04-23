@@ -232,6 +232,18 @@ class DroneMQTTClient(mqtt.Client):
         else:
             print("Unknown command: {}".format(command))
 
+    def start(self, broker, port):
+        print("Connecting to {}:{}".format(broker, port))
+        self.client.connect(broker, port)
+        self.client.subscribe(MQTT_TOPIC_COMMAND)
+        try:
+            thread = Thread(target=self.client.loop_forever)
+            thread.start()
+        except KeyboardInterrupt:
+            print("Interrupted")
+            self.client.disconnect()
+
+
 # ---- MQTT DRIVER SETUP ----
 
 if __name__ == "__main__":
