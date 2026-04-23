@@ -122,3 +122,6 @@ timestamp,event_type,drone_id,drone_name,command,status,location,battery,raw_pay
 2026-04-23 11:13:07,broker_connect,,,,Success,,,,,
 2026-04-23 11:13:58,select,drone-03,Drone 03,select_drone,returning,In transit,45%,,,"{""command"": ""select_drone"", ""drone"": ""drone-03""}"
 2026-04-23 11:14:00,select,drone-01,Drone 01,select_drone,idle,Hangar A,92%,,,"{""command"": ""select_drone"", ""drone"": ""drone-01""}"
+2026-04-23 11:21:35,mqtt_in,drone-02,Drone 02,,returning,Ward 3,78%,,Drone drone-02 is returning.,"{""status"": ""returning"", ""drone"": ""drone-02"", ""message"": ""Drone drone-02 is returning.""}"
+2026-04-23 11:21:35,mqtt_in,drone-02,Drone 02,,returning,Ward 3,78%,,Drone drone-02 is returning.,"{""status"": ""returning"", ""drone"": ""drone-02"", ""message"": ""Drone drone-02 is returning.""}"
+2026-04-23 11:21:36,broker_connect,,,,Success,,,,,
